@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!--
+  AI创作工坊 - 独立可移植模块
+  移植说明：复制整个 ai-studio 文件夹到目标项目的静态目录即可。
+  入口：index.html。返回链接可通过 window.MEDIA_STUDIO_BACK_URL 或本页 data-back-url 覆盖。
+  版本：2.1.0（修改此处版本号可强制刷新前端缓存）
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="ai-studio-version" content="2.1.0">
+  <title>AI创作工坊 - 图片生成 / 图生视频 / 对口型 / 配音 / 多图参考生图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="media-studio.css?v=2.3.0">
+</head>
+<body data-back-url="../dashboard.html">
+  <header class="studio-header">
+    <div class="studio-title">
+      <span>🎨</span>
+      <span>AI创作工坊</span>
+    </div>
+    <a class="back-link" id="studioBackLink" href="../dashboard.html">← 返回工作台</a>
+  </header>
+
+  <div class="studio-body">
+    <aside class="studio-sidebar">
+      <nav class="studio-nav" id="studioNav"></nav>
+      <div class="studio-sidebar-footer"></div>
+    </aside>
+    <main class="studio-content" id="featureContent">
+      <div class="studio-content-inner"></div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var back = document.getElementById('studioBackLink');
+      var defaultBack = document.body.getAttribute('data-back-url') || '../dashboard.html';
+      if (back && (typeof window.MEDIA_STUDIO_BACK_URL === 'string')) back.href = window.MEDIA_STUDIO_BACK_URL;
+      else if (back) back.href = defaultBack;
+    })();
+  </script>
+  <script src="media-studio.js?v=2.2.0"></script>
+  <script src="features/settings.js?v=2.2.0"></script>
+  <script src="features/text2img.js?v=2.2.0"></script>
+  <script src="features/img2video.js?v=2.2.0"></script>
+  <script src="features/lipsync.js?v=2.2.0"></script>
+  <script src="features/dubbing.js?v=2.2.0"></script>
+  <script src="features/editimg.js?v=2.2.0"></script>
+  <script src="features/works.js?v=2.2.0"></script>
+</body>
+</html>
