@@ -1,112 +1,186 @@
 /**
  * AI创作工坊 - 配音（独立文件）
- * 对接云雾可灵：文生音效 + 视频生音效
+ * 集成语音合成、文生音效、视频生音效功能
+ * 参考生成图像的聊天界面样式
  */
 (function () {
   var id = 'dubbing';
-  var name = '配音';
+  var name = '生成音频';
   var icon = '🔊';
-  var TEXT2AUDIO_PATH = '/api/yunwu/audio/text-to-audio/';
+  
+  var TEXT2AUDIO_PATH = '/kling/v1/audio/text-to-audio';
   var TTS_PATH = '/api/yunwu/audio/tts/';
   var VIDEO2AUDIO_PATH = '/api/yunwu/audio/video-to-audio/';
+  
+  // 功能模式：tts（语音合成）、text2audio（文生音效）、video2audio（视频生音效）
+  var AUDIO_MODES = [
+    { value: 'tts', label: '语音合成' },
+    { value: 'text2audio', label: '文生音效' },
+    { value: 'video2audio', label: '视频生音效' }
+  ];
+  var currentAudioMode = 'tts';
+  
+  // 当前设置
+  var currentSettings = {
+    // TTS 设置
+    voiceId: 'genshin_vindi2',
+    voiceLanguage: 'zh',
+    voiceSpeed: 1.0,
+    // 文生音效设置
+    duration: 5.0,
+    // 视频生音效设置
+    soundEffectPrompt: '',
+    bgmPrompt: '',
+    asmrMode: false
+  };
+  
+  // TTS 音色列表
+  var ttsVoiceList = [];
+  
+  // 推荐音效列表（用于文生音效）
+  var RECOMMENDED_SOUND_EFFECTS = [
+    { name: '清噪声', prompt: '清噪声' },
+    { name: '婴儿咕噜声', prompt: '婴儿咕噜声' },
+    { name: '丛林夜晚诡异声', prompt: '丛林夜晚诡异声' },
+    { name: '惊恐尖叫声', prompt: '惊恐尖叫声' },
+    { name: '无线鼠标点击声', prompt: '无线鼠标点击声' },
+    { name: '打字速度技巧', prompt: '打字速度技巧' }
+  ];
 
   function getPanel() {
     return [
-      '<h2 class="panel-title">配音 · 可灵 Kling 文生音效 / 语音合成 / 视频生音效</h2>',
-      '<div class="form-row">',
-      '  <label>模式 <span class="required">*</span></label>',
-      '  <select id="dub-mode">',
-      '    <option value="text2audio">文生音效（文本生成音频）</option>',
-      '    <option value="video2audio">视频生音效（视频提取/生成音效）</option>',
-      '  </select>',
-      '</div>',
-      '<div id="dub-text2audio-fields">',
-      '  <div class="form-row">',
-      '    <label>类型 <span class="required">*</span></label>',
-      '    <select id="dub-text2audio-type">',
-      '      <option value="sound_effect">音效（环境声、自然声等）</option>',
-      '      <option value="tts">语音合成（演讲/朗读，支持多语种）</option>',
-      '    </select>',
-      '    <p class="hint" id="dub-prompt-hint">音效：描述要生成的音效；语音合成：输入要朗读的文本（支持多语种）</p>',
+      '<div class="t2i-container">',
+      '  <div class="t2i-header-bar">',
+      '    <div class="t2i-header-title">生成音频</div>',
       '  </div>',
-      '  <div class="form-row" id="dub-tts-only-row">',
-      '    <label>文本 text <span class="required">*</span></label>',
-      '    <textarea id="dub-prompt" placeholder="输入要朗读的文本，支持中文、英文等多语种" maxlength="2000"></textarea>',
+      '  <div class="t2i-mode-tabs">',
+      '    <button type="button" class="t2i-mode-tab active" data-mode="tts" id="dub-mode-tab-tts">语音合成</button>',
+      '    <button type="button" class="t2i-mode-tab" data-mode="text2audio" id="dub-mode-tab-text2audio">文生音效</button>',
+      '    <button type="button" class="t2i-mode-tab" data-mode="video2audio" id="dub-mode-tab-video2audio">视频生音效</button>',
       '  </div>',
-      '  <div id="dub-tts-params" style="display:none;">',
-      '    <div class="form-row">',
-      '      <label>音色 ID voice_id</label>',
-      '      <div class="t2i-image-input-wrap" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">',
-      '        <select id="dub-voice-id" class="ms-select" style="flex:1;min-width:200px;">',
-      '          <option value="genshin_vindi2">加载中…</option>',
-      '        </select>',
-      '        <button type="button" class="btn-secondary" id="dub-voice-preview-btn" style="margin:0;">试听音色</button>',
-      '        <span id="dub-voice-preview-hint" class="hint" style="display:none;"></span>',
+      '  <div class="t2i-input-area">',
+      '    <div class="t2i-input-box">',
+      '      <!-- 视频生音效：视频上传卡片 -->',
+      '      <div class="dub-video-upload-section" id="dub-video-upload-section" style="display:none;">',
+      '        <div class="dub-video-card" id="dub-video-card">',
+      '          <div class="dub-video-card-content">',
+      '            <div class="dub-video-icon">',
+      '              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">',
+      '                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>',
+      '                <polyline points="2 8 12 14 22 8"></polyline>',
+      '              </svg>',
+      '              <span class="dub-video-plus">+</span>',
+      '            </div>',
+      '            <div class="dub-video-main-text">请添加一段视频</div>',
+      '            <div class="dub-video-sub-text">历史创作</div>',
+      '          </div>',
+      '          <div class="dub-video-preview" id="dub-video-preview" style="display:none;"></div>',
+      '        </div>',
+      '        <input type="file" id="dub-video-file" accept="video/mp4,video/mov" style="display:none;">',
+      '        <input type="text" id="dub-video-input" class="dub-video-url-input" placeholder="或输入视频 URL 或视频ID" style="display:none;">',
       '      </div>',
-      '      <p class="hint">系统提供多种音色可供选择，下拉为「音色名称 # 音色ID # 音色语种」。试听使用官方固定样例，不支持自定义文案。</p>',
-      '    </div>',
-      '    <div class="form-row">',
-      '      <label>音色语种 voice_language</label>',
-      '      <select id="dub-voice-language" style="width:100%;">',
-      '        <option value="zh">zh（中文）</option>',
-      '        <option value="en">en（英文）</option>',
-      '        <option value="ja">ja（日文）</option>',
-      '        <option value="ko">ko（韩文）</option>',
-      '      </select>',
-      '    </div>',
-      '    <div class="form-row">',
-      '      <label>语速 voice_speed</label>',
-      '      <input type="number" id="dub-voice-speed" min="0.5" max="2" step="0.1" value="1.0" placeholder="1.0" style="width:120px;">',
-      '      <p class="hint">建议 0.5～2.0，默认 1.0</p>',
-      '    </div>',
-      '    <div class="form-row">',
-      '      <p class="hint" style="margin-top:8px;">语音合成备注：演讲/朗读支持多语种，不限于汉语。音色试听不支持自定义文案；试听文件命名规范：音色名称#音色ID#音色语种。</p>',
+      '      <!-- 文生音效：大输入框 -->',
+      '      <div class="dub-text2audio-section" id="dub-text2audio-section" style="display:none;">',
+      '        <div class="dub-large-input-wrapper">',
+      '          <textarea id="dub-prompt-text2audio" class="dub-large-input" placeholder="请输入音效创意描述" maxlength="2000"></textarea>',
+      '        </div>',
+      '        <div class="dub-recommended-sounds">',
+      '          <div class="dub-recommended-title">推荐音效:</div>',
+      '          <div class="dub-recommended-grid" id="dub-recommended-grid"></div>',
+      '        </div>',
+      '      </div>',
+      '      <!-- 语音合成：文本输入 -->',
+      '      <div class="dub-tts-section" id="dub-tts-section">',
+      '        <div class="t2i-prompt-row">',
+      '          <textarea id="dub-prompt" class="t2i-prompt-input" placeholder="输入要朗读的文本，支持中文、英文等多语种，不能超过2000字符" maxlength="2000"></textarea>',
+      '        </div>',
+      '        <!-- 试听列表：音色选择（在输入框下方） -->',
+      '        <div class="dub-voice-list-section" id="dub-voice-list-section" style="display:none;">',
+      '          <div class="dub-voice-list-title">试听列表</div>',
+      '          <div class="dub-voice-list-grid" id="dub-voice-list-grid"></div>',
+      '        </div>',
+      '      </div>',
+      '      <!-- 视频生音效：音效和配乐输入 -->',
+      '      <div class="dub-audio-prompts-section" id="dub-audio-prompts-section" style="display:none;">',
+      '        <div class="dub-audio-prompt-row">',
+      '          <button type="button" class="dub-prompt-type-btn" id="dub-sound-effect-btn">',
+      '            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">',
+      '              <path d="M11 5L6 9H2v6h4l5 4V5z"></path>',
+      '              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>',
+      '            </svg>',
+      '            <span>音效</span>',
+      '          </button>',
+      '          <input type="text" id="dub-sound-effect-input" class="dub-prompt-input" placeholder="[可选]输入音效描述,例如:木船吱呀声" maxlength="500">',
+      '        </div>',
+      '        <div class="dub-audio-prompt-row">',
+      '          <button type="button" class="dub-prompt-type-btn" id="dub-bgm-btn">',
+      '            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">',
+      '              <path d="M9 18V5l12-2v13"></path>',
+      '              <circle cx="6" cy="18" r="3"></circle>',
+      '              <circle cx="18" cy="16" r="3"></circle>',
+      '            </svg>',
+      '            <span>配乐</span>',
+      '          </button>',
+      '          <input type="text" id="dub-bgm-input" class="dub-prompt-input" placeholder="[可选]输入配乐描述,例如:悠远长笛旋律" maxlength="500">',
+      '        </div>',
+      '        <div class="dub-asmr-row">',
+      '          <label class="dub-asmr-label">',
+      '            <input type="checkbox" id="dub-asmr-mode" class="dub-asmr-checkbox">',
+      '            <span class="dub-asmr-text">开启 ASMR 模式</span>',
+      '          </label>',
+      '          <span class="dub-asmr-hint">增强细节音效，适合高沉浸场景</span>',
+      '        </div>',
+      '      </div>',
       '    </div>',
       '  </div>',
-      '  <div class="form-row" id="dub-duration-row">',
-      '    <label>时长 duration（秒）</label>',
-      '    <input type="number" id="dub-duration" min="3" max="10" step="0.1" value="5" placeholder="3.0～10.0">',
-      '    <p class="hint">3.0～10.0 秒，支持一位小数（仅音效模式）</p>',
+      '  <div class="t2i-footer-bar">',
+      '    <div class="t2i-footer-controls">',
+      '      <button type="button" class="dub-speed-btn" id="dub-speed-btn" style="display:none;">',
+      '        <span>语速</span>',
+      '        <span id="dub-speed-value">1.0</span>',
+      '        <span class="t2i-dropdown-arrow">▼</span>',
+      '      </button>',
+      '      <div class="dub-speed-dropdown" id="dub-speed-dropdown" style="display:none;">',
+      '        <div class="dub-speed-dropdown-content">',
+      '          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">',
+      '            <span style="font-size:0.85rem;color:var(--text-secondary);min-width:60px;">语速</span>',
+      '            <span id="dub-speed-dropdown-value" style="font-size:0.9rem;color:var(--primary);font-weight:600;min-width:40px;text-align:center;">1.0</span>',
+      '          </div>',
+      '          <input type="range" id="dub-speed-slider" class="dub-speed-slider" min="0.5" max="2.0" step="0.1" value="1.0">',
+      '        </div>',
+      '      </div>',
+      '      <button type="button" class="dub-duration-btn" id="dub-duration-btn" style="display:none;">',
+      '        <span>时长</span>',
+      '        <span id="dub-duration-slider-value">5.0</span>',
+      '        <span class="dub-duration-slider-unit">秒</span>',
+      '        <span class="t2i-dropdown-arrow">▼</span>',
+      '      </button>',
+      '      <div class="dub-duration-dropdown" id="dub-duration-dropdown" style="display:none;">',
+      '        <div class="dub-duration-dropdown-content">',
+      '          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">',
+      '            <span style="font-size:0.85rem;color:var(--text-secondary);min-width:60px;">时长</span>',
+      '            <span id="dub-duration-dropdown-value" style="font-size:0.9rem;color:var(--primary);font-weight:600;min-width:40px;text-align:center;">5.0</span>',
+      '            <span style="font-size:0.85rem;color:var(--muted);">秒</span>',
+      '          </div>',
+      '          <input type="range" id="dub-duration-slider" class="dub-duration-slider" min="3.0" max="10.0" step="0.1" value="5.0">',
+      '        </div>',
+      '      </div>',
+      '      <button type="button" class="t2i-footer-btn" id="dub-voice-lang-btn" style="display:none;">',
+      '        <span id="dub-voice-lang-text">zh</span>',
+      '        <span class="t2i-dropdown-arrow">▼</span>',
+      '      </button>',
+      '    </div>',
+      '    <button type="button" class="t2i-generate-btn" id="dub-submit">生成</button>',
       '  </div>',
       '</div>',
-      '<div id="dub-video2audio-fields" style="display:none;">',
-      '  <div class="form-row">',
-      '    <label>视频 <span class="required">*</span></label>',
-      '    <div class="t2i-image-input-wrap">',
-      '      <input type="text" id="dub-video" placeholder="输入视频 URL 或视频ID">',
-      '      <input type="file" id="dub-video-file" accept="video/mp4,video/mov" style="display:none;">',
-      '      <button type="button" class="btn-secondary" id="dub-upload-video-btn" style="margin-left:8px;margin-top:0;">上传视频</button>',
-      '    </div>',
-      '    <p class="hint">视频ID（可灵生成，30天内、3～20秒）或视频 URL（MP4/MOV，≤100MB，3～20秒）</p>',
-      '  </div>',
-      '  <div class="form-row">',
-      '    <label>音效提示词 sound_effect_prompt（可选）</label>',
-      '    <input type="text" id="dub-sound-effect-prompt" placeholder="如：符合视频的人声、环境音">',
-      '  </div>',
-      '  <div class="form-row">',
-      '    <label>配乐提示词 bgm_prompt（可选）</label>',
-      '    <input type="text" id="dub-bgm-prompt" placeholder="配乐风格描述">',
-      '  </div>',
-      '  <div class="form-row">',
-      '    <label><input type="checkbox" id="dub-asmr-mode"> 开启 ASMR 模式</label>',
-      '    <p class="hint">增强细节音效，适合高沉浸场景</p>',
-      '  </div>',
-      '</div>',
-      '<div class="form-row">',
-      '  <button type="button" class="btn-primary" id="dub-submit">生成音效</button>',
-      '</div>',
-      '<div class="result-area" id="dub-result">生成结果将显示在此处，可播放音频</div>'
+      '<div class="t2i-mode-dropdown" id="dub-mode-dropdown" style="display:none;"></div>',
+      '<div class="t2i-voice-lang-dropdown" id="dub-voice-lang-dropdown" style="display:none;"></div>'
     ].join('\n');
   }
 
   function apiOrigin() {
     var o = (typeof window !== 'undefined' && window.location && window.location.origin) || '';
     return o.replace(/\/+$/, '') || (window.location.protocol + '//' + (window.location.hostname || 'localhost') + (window.location.port ? ':' + window.location.port : ''));
-  }
-
-  function setResult(html, isContent) {
-    var el = document.getElementById('dub-result');
-    if (el) { el.innerHTML = html; el.classList.toggle('has-content', !!isContent); }
   }
 
   function getVal(id, def) {
@@ -125,74 +199,29 @@
 
   function collectAudioUrls(obj, out) {
     if (!obj || typeof obj !== 'object') return;
-    var urlKeys = ['audio', 'url', 'audios', 'audio_url', 'output_audio', 'result_url', 'output_url', 'audioUrl'];
+    var urlKeys = ['audio', 'url', 'audios', 'audio_url', 'output_audio', 'result_url', 'output_url', 'audioUrl', 'url_mp3', 'url_wav'];
     urlKeys.forEach(function (k) {
       var v = obj[k];
-      if (typeof v === 'string' && /^https?:\/\//i.test(v)) out.push(v);
-      else if (Array.isArray(v)) v.forEach(function (u) {
-        if (typeof u === 'string' && /^https?:\/\//i.test(u)) out.push(u);
-        else if (u && u.url) out.push(u.url);
-      });
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+        if (/\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(v)) out.push(v);
+      } else if (Array.isArray(v)) {
+        v.forEach(function (u) {
+          if (typeof u === 'string' && /^https?:\/\//i.test(u) && /\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(u)) out.push(u);
+          else if (u && typeof u === 'object') {
+            if (u.url_mp3 && typeof u.url_mp3 === 'string') out.push(u.url_mp3);
+            if (u.url_wav && typeof u.url_wav === 'string') out.push(u.url_wav);
+            if (u.url && typeof u.url === 'string' && /\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(u.url)) out.push(u.url);
+          }
+        });
+      } else if (v && typeof v === 'object' && v.url) {
+        if (/\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(v.url)) out.push(v.url);
+      }
     });
     Object.keys(obj).forEach(function (k) {
+      if (k !== 'task_status' && k !== 'status' && k !== 'task_id' && k !== 'id') {
       collectAudioUrls(obj[k], out);
-    });
-  }
-
-  function handleDubResult(result, workId, btn) {
-    var audios = (result && result.audios) || [];
-    var raw = result && result.raw;
-    var audioId = (result && result.audioId) || '';
-    if (!audios.length && raw) {
-      collectAudioUrls(raw, audios);
-      audios = [...new Set(audios.filter(Boolean))];
-    }
-    if (!audioId && raw) {
-      audioId = (raw && raw.data && raw.data.audio_id) ||
-        (raw && raw.data && raw.data.task_result && raw.data.task_result.audio_id) ||
-        (raw && raw.audio_id) || '';
-    }
-    var hasResources = audios.length > 0;
-    var succeedNoUrl = !!(result && result.succeedNoUrl);
-    if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
-      var finalStatus = hasResources ? 'ready' : (succeedNoUrl ? 'ready' : 'failed');
-      var updates = {
-        status: finalStatus,
-        audios: audios,
-        progress: null,
-        progressStatus: succeedNoUrl ? '已完成（链接未返回）' : null
-      };
-      if (audios.length) updates.resultUrl = audios[0];
-      if (audioId) updates.audioId = audioId;
-      window.MediaStudio.updateWork(workId, updates);
-      if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
-    }
-    if (!hasResources) {
-      var msg = succeedNoUrl
-        ? '<span class="msg-warning">任务已完成，但响应中音频链接（url_mp3/url_wav）为空，请到云雾控制台查看或稍后刷新作品状态。</span>'
-        : '<span class="msg-warning">任务完成但未解析到音频链接。</span>';
-      if (raw) {
-        msg += '<br><details style="margin-top:12px"><summary style="cursor:pointer">点击展开「查询任务」原始响应（便于排查字段）</summary><pre style="max-height:240px;overflow:auto;font-size:11px;white-space:pre-wrap;background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;margin-top:8px">' + JSON.stringify(raw, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></details>';
       }
-      setResult(msg, true);
-      if (btn) btn.disabled = false;
-      return;
-    }
-    var html = '<span class="msg-success">✓ 生成完成</span><br>';
-    var firstUrl = audios[0];
-    if (firstUrl) {
-      html += '<div class="t2i-out"><audio src="' + (firstUrl || '').replace(/"/g, '&quot;') + '" controls style="max-width:100%;"></audio><a href="' + (firstUrl || '#').replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">打开音频</a></div>';
-    }
-    setResult(html, true);
-    if (btn) btn.disabled = false;
-  }
-
-  function handleDubError(err, workId, btn) {
-    setResult('<span class="msg-error">✗ ' + (err && err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
-    if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
-      window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
-    }
-    if (btn) btn.disabled = false;
+    });
   }
 
   function pollTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount, queryPath) {
@@ -204,9 +233,11 @@
       return;
     }
     var url = apiOrigin() + queryPath.replace(/\/+$/, '') + '/' + encodeURIComponent(taskId);
+    var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders);
     fetch(url, {
       method: 'GET',
-      headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+      headers: headers,
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -267,6 +298,19 @@
           '';
 
         if (status === 'done' && audios.length > 0) {
+          // 任务完成且有资源，立即更新作品状态
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            var updates = {
+              status: 'ready',
+              audios: audios,
+              resultUrl: audios[0],
+              audioId: audioId,
+              progress: 100,
+              progressStatus: '已完成'
+            };
+            window.MediaStudio.updateWork(workId, updates);
+            if (window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+          }
           resolve({ audios: audios, raw: data, audioId: audioId });
           return;
         }
@@ -304,338 +348,1312 @@
       .catch(reject);
   }
 
+
+  // 上传视频文件到服务器（使用FormData）
+  function uploadVideoFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file || !file.type || !file.type.startsWith('video/')) {
+        reject(new Error('请选择视频文件（.mp4/.mov）'));
+        return;
+      }
+      // 视频文件大小限制可以设置得更大一些，比如100MB
+      if (file.size > 100 * 1024 * 1024) {
+        reject(new Error('视频文件过大，请选择 ≤100MB 的视频'));
+        return;
+      }
+      var formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'video');
+      fetch(apiOrigin() + '/api/upload-temp-asset', {
+        method: 'POST',
+        body: formData,
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.success && data.url) {
+            var url = data.url;
+            var isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(url);
+            if (isLocalhost) {
+              // 本地地址警告可以忽略，因为服务器会处理
+            }
+            resolve(url);
+          } else {
+            reject(new Error(data && data.message ? data.message : '上传失败'));
+          }
+        })
+        .catch(reject);
+    });
+  }
+
   function init(container) {
     if (!container) return;
-    var btn = document.getElementById('dub-submit');
-    if (!btn) return;
-
-    var modeSelect = document.getElementById('dub-mode');
-    var text2audioFields = document.getElementById('dub-text2audio-fields');
-    var video2audioFields = document.getElementById('dub-video2audio-fields');
-    var text2audioTypeSelect = document.getElementById('dub-text2audio-type');
-    var durationRow = document.getElementById('dub-duration-row');
-    var promptHint = document.getElementById('dub-prompt-hint');
-    var promptTextarea = document.getElementById('dub-prompt');
-    if (modeSelect && text2audioFields && video2audioFields) {
-      function toggleMode() {
-        var isText = modeSelect.value === 'text2audio';
-        text2audioFields.style.display = isText ? '' : 'none';
-        video2audioFields.style.display = isText ? 'none' : '';
-        toggleText2AudioType();
-      }
-      function toggleText2AudioType() {
-        var isTts = text2audioTypeSelect && text2audioTypeSelect.value === 'tts';
-        var ttsParams = document.getElementById('dub-tts-params');
-        if (durationRow) durationRow.style.display = isTts ? 'none' : '';
-        if (ttsParams) ttsParams.style.display = isTts ? '' : 'none';
-        if (promptHint) promptHint.textContent = isTts ? '输入要朗读的文本，支持多语种（不限于汉语）。' : '音效：描述要生成的音效；语音合成：输入要朗读的文本（支持多语种）';
-        if (promptTextarea) promptTextarea.placeholder = isTts ? '输入要朗读的文本，如：大家好，欢迎收听。或 Hello, welcome.' : '音效模式：如雨声、海浪；语音合成：输入要朗读的文本';
-        if (isTts) loadTtsVoices();
-      }
-      function loadTtsVoices() {
-        var sel = document.getElementById('dub-voice-id');
-        if (!sel) return;
-        sel.innerHTML = '<option value="genshin_vindi2">加载中…</option>';
-        window._dubTtsVoiceList = [];
-        fetch(apiOrigin() + '/api/tts/voices', { method: 'GET', headers: { 'Content-Type': 'application/json' } })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            var list = (data && data.data && data.data.ttsList) || (data && data.ttsList) || [];
-            if (!Array.isArray(list)) list = [];
-            var html = '';
-            var voiceList = [];
-            list.forEach(function (v) {
-              var id = (v && (v.voice_id || v.speakerId || v.id || v.voiceId)) || '';
-              var name = (v && (v.name || v.voice_name || v.label)) || id || '未知';
-              var lang = (v && (v.language || v.voice_language || v.lang)) || '';
-              var exampleUrl = (v && (v.exampleUrl || v.example_url || v.preview_url || v.sample_url)) || '';
-              if (id) {
-                html += '<option value="' + String(id).replace(/"/g, '&quot;') + '">' + String(name + (id ? ' # ' + id : '') + (lang ? ' # ' + lang : '')).replace(/</g, '&lt;') + '</option>';
-                voiceList.push({ id: id, name: name, language: lang, exampleUrl: exampleUrl });
-              }
-            });
-            window._dubTtsVoiceList = voiceList;
-            if (html) sel.innerHTML = html; else sel.innerHTML = '<option value="genshin_vindi2">阳光少年 # genshin_vindi2 # zh</option>';
-          })
-          .catch(function () {
-            window._dubTtsVoiceList = [{ id: 'genshin_vindi2', name: '阳光少年', language: 'zh', exampleUrl: '' }];
-            sel.innerHTML = '<option value="genshin_vindi2">阳光少年 # genshin_vindi2 # zh</option>';
-          });
-      }
-      function previewTtsVoice() {
-        var sel = document.getElementById('dub-voice-id');
-        var hint = document.getElementById('dub-voice-preview-hint');
-        if (!sel) return;
-        var voiceId = (sel.value || '').trim();
-        var list = window._dubTtsVoiceList || [];
-        var voice = list.filter(function (v) { return v.id === voiceId; })[0] || null;
-        var url = voice && voice.exampleUrl ? (voice.exampleUrl + '').trim() : '';
-        if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
-        if (!url) {
-          if (hint) { hint.style.display = 'inline'; hint.textContent = '该音色暂无试听（无官方样例链接）'; }
-          return;
-        }
-        if (window._dubPreviewAudio) {
-          try { window._dubPreviewAudio.pause(); window._dubPreviewAudio = null; } catch (e) {}
-        }
-        var audio = new Audio(url);
-        window._dubPreviewAudio = audio;
-        audio.play().catch(function (e) {
-          if (hint) { hint.style.display = 'inline'; hint.textContent = '试听加载失败'; }
-        });
-        if (hint) { hint.style.display = 'inline'; hint.textContent = '正在试听…'; }
-        audio.addEventListener('ended', function () { if (hint) hint.textContent = ''; });
-        audio.addEventListener('error', function () { if (hint) hint.textContent = '试听加载失败'; });
-      }
-      var previewBtn = document.getElementById('dub-voice-preview-btn');
-      if (previewBtn) previewBtn.addEventListener('click', previewTtsVoice);
-      var voiceSelect = document.getElementById('dub-voice-id');
-      var langSelect = document.getElementById('dub-voice-language');
-      if (voiceSelect && langSelect) {
-        voiceSelect.addEventListener('change', function () {
-          var list = window._dubTtsVoiceList || [];
-          var v = list.filter(function (x) { return x.id === (voiceSelect.value || '').trim(); })[0];
-          if (v && v.language && langSelect.querySelector('option[value="' + v.language + '"]')) langSelect.value = v.language;
-        });
-      }
-      modeSelect.addEventListener('change', toggleMode);
-      if (text2audioTypeSelect) text2audioTypeSelect.addEventListener('change', toggleText2AudioType);
-      toggleMode();
-    }
-
-    var videoInput = document.getElementById('dub-video');
+    
+    var modeTabTts = document.getElementById('dub-mode-tab-tts');
+    var modeTabText2audio = document.getElementById('dub-mode-tab-text2audio');
+    var modeTabVideo2audio = document.getElementById('dub-mode-tab-video2audio');
+    var speedBtn = document.getElementById('dub-speed-btn');
+    var speedDropdown = document.getElementById('dub-speed-dropdown');
+    var speedSlider = document.getElementById('dub-speed-slider');
+    var speedValue = document.getElementById('dub-speed-value');
+    var durationBtn = document.getElementById('dub-duration-btn');
+    var durationDropdown = document.getElementById('dub-duration-dropdown');
+    var durationSlider = document.getElementById('dub-duration-slider');
+    var durationSliderValue = document.getElementById('dub-duration-slider-value');
+    var voiceLangBtn = document.getElementById('dub-voice-lang-btn');
+    var voiceLangText = document.getElementById('dub-voice-lang-text');
+    var voiceLangDropdown = document.getElementById('dub-voice-lang-dropdown');
+    var voiceListSection = document.getElementById('dub-voice-list-section');
+    var voiceListGrid = document.getElementById('dub-voice-list-grid');
+    var generateBtn = document.getElementById('dub-submit');
+    var promptInput = document.getElementById('dub-prompt');
+    var promptText2audio = document.getElementById('dub-prompt-text2audio');
+    var videoUploadSection = document.getElementById('dub-video-upload-section');
+    var videoCard = document.getElementById('dub-video-card');
+    var videoPreview = document.getElementById('dub-video-preview');
     var videoFileInput = document.getElementById('dub-video-file');
-    var uploadVideoBtn = document.getElementById('dub-upload-video-btn');
+    var videoInput = document.getElementById('dub-video-input');
+    var ttsSection = document.getElementById('dub-tts-section');
+    var text2audioSection = document.getElementById('dub-text2audio-section');
+    var audioPromptsSection = document.getElementById('dub-audio-prompts-section');
+    var soundEffectInput = document.getElementById('dub-sound-effect-input');
+    var bgmInput = document.getElementById('dub-bgm-input');
+    var asmrCheckbox = document.getElementById('dub-asmr-mode');
+    var recommendedGrid = document.getElementById('dub-recommended-grid');
+    
     var currentVideoUrl = '';
     var currentVideoId = '';
-
-    if (uploadVideoBtn && videoFileInput) {
-      uploadVideoBtn.addEventListener('click', function () { videoFileInput.click(); });
-      videoFileInput.addEventListener('change', function (e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) return;
-        setResult('视频文件已选择，请使用视频URL或视频ID', true);
-        videoFileInput.value = '';
+    var currentVideoFile = null;
+    
+    // 初始化功能模式标签页
+    if (modeTabTts && modeTabText2audio && modeTabVideo2audio) {
+      modeTabTts.classList.remove('active');
+      modeTabText2audio.classList.remove('active');
+      modeTabVideo2audio.classList.remove('active');
+      if (currentAudioMode === 'tts') {
+        modeTabTts.classList.add('active');
+      } else if (currentAudioMode === 'text2audio') {
+        modeTabText2audio.classList.add('active');
+      } else {
+        modeTabVideo2audio.classList.add('active');
+      }
+      
+      modeTabTts.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentAudioMode = 'tts';
+        modeTabTts.classList.add('active');
+        modeTabText2audio.classList.remove('active');
+        modeTabVideo2audio.classList.remove('active');
+        switchAudioMode('tts');
+      });
+      
+      modeTabText2audio.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentAudioMode = 'text2audio';
+        modeTabTts.classList.remove('active');
+        modeTabText2audio.classList.add('active');
+        modeTabVideo2audio.classList.remove('active');
+        switchAudioMode('text2audio');
+      });
+      
+      modeTabVideo2audio.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentAudioMode = 'video2audio';
+        modeTabTts.classList.remove('active');
+        modeTabText2audio.classList.remove('active');
+        modeTabVideo2audio.classList.add('active');
+        switchAudioMode('video2audio');
       });
     }
-
+    
+    // 切换音频模式
+    function switchAudioMode(mode) {
+      // 隐藏所有区域
+      if (ttsSection) ttsSection.style.display = 'none';
+      if (text2audioSection) text2audioSection.style.display = 'none';
+      if (videoUploadSection) videoUploadSection.style.display = 'none';
+      if (audioPromptsSection) audioPromptsSection.style.display = 'none';
+      
+      if (mode === 'tts') {
+        // 语音合成：显示文本输入和试听列表
+        if (ttsSection) ttsSection.style.display = 'block';
+        if (voiceListSection) voiceListSection.style.display = 'block';
+        // 显示语速按钮和音色语种按钮
+        if (speedBtn) speedBtn.style.display = 'flex';
+        if (speedDropdown) speedDropdown.style.display = 'none';
+        if (voiceLangBtn) voiceLangBtn.style.display = 'flex';
+        // 初始化试听列表
+        initVoiceList();
+      } else {
+        // 其他模式隐藏试听列表和设置按钮
+        if (voiceListSection) voiceListSection.style.display = 'none';
+        if (speedBtn) speedBtn.style.display = 'none';
+        if (speedDropdown) speedDropdown.style.display = 'none';
+        if (voiceLangBtn) voiceLangBtn.style.display = 'none';
+      }
+      
+      if (mode === 'text2audio') {
+        // 文生音效：显示大输入框和推荐音效
+        if (text2audioSection) text2audioSection.style.display = 'block';
+        // 显示底部栏的时长按钮
+        if (durationBtn) durationBtn.style.display = 'flex';
+        if (durationDropdown) durationDropdown.style.display = 'none';
+        // 初始化推荐音效网格
+        initRecommendedSounds();
+        // 初始化时长滑动条
+        initDurationSliderForText2Audio();
+      } else {
+        // 其他模式隐藏时长选择器
+        if (durationBtn) durationBtn.style.display = 'none';
+        if (durationDropdown) durationDropdown.style.display = 'none';
+      }
+      
+      if (mode === 'video2audio') {
+        // 视频生音效：显示视频上传卡片和音效/配乐输入
+        if (videoUploadSection) videoUploadSection.style.display = 'block';
+        if (audioPromptsSection) audioPromptsSection.style.display = 'block';
+      }
+      
+      // 更新底部按钮文本
+      updateFooterButtons();
+    }
+    
+    // 初始化试听列表（音色网格）
+    function initVoiceList() {
+      if (!voiceListGrid || ttsVoiceList.length === 0) return;
+      
+      var html = ttsVoiceList.map(function(voice) {
+        var isSelected = voice.id === currentSettings.voiceId;
+        var selectedClass = isSelected ? 'dub-voice-item-selected' : '';
+        return '<div class="dub-voice-item ' + selectedClass + '" data-voice-id="' + String(voice.id).replace(/"/g, '&quot;') + '">' +
+          '<div class="dub-voice-item-icon">' +
+          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+          '<path d="M11 5L6 9H2v6h4l5 4V5z"></path>' +
+          '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>' +
+          '</svg>' +
+          '</div>' +
+          '<div class="dub-voice-item-info">' +
+          '<div class="dub-voice-item-name">' + String(voice.name || voice.id).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+          '<div class="dub-voice-item-id">' + String(voice.id).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+          '</div>' +
+          '<button type="button" class="dub-voice-preview-btn" data-voice-id="' + String(voice.id).replace(/"/g, '&quot;') + '" title="试听">▶</button>' +
+          '</div>';
+      }).join('');
+      
+      voiceListGrid.innerHTML = html;
+      
+      // 绑定音色选择事件
+      voiceListGrid.querySelectorAll('.dub-voice-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          if (e.target.closest('.dub-voice-preview-btn')) return;
+          var voiceId = item.getAttribute('data-voice-id');
+          currentSettings.voiceId = voiceId;
+          
+          // 更新选中状态
+          voiceListGrid.querySelectorAll('.dub-voice-item').forEach(function(v) {
+            v.classList.remove('dub-voice-item-selected');
+          });
+          item.classList.add('dub-voice-item-selected');
+          
+          // 更新语种（如果音色有指定语种）
+          var voice = ttsVoiceList.find(function(v) { return v.id === voiceId; });
+          if (voice && voice.language && voiceLangDropdown) {
+            currentSettings.voiceLanguage = voice.language;
+            updateFooterButtons();
+            updateVoiceLangDropdown();
+          }
+        });
+      });
+      
+      // 绑定试听按钮事件
+      voiceListGrid.querySelectorAll('.dub-voice-preview-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var voiceId = btn.getAttribute('data-voice-id');
+          previewVoiceById(voiceId);
+        });
+      });
+    }
+    
+    // 试听指定音色
+    function previewVoiceById(voiceId) {
+      var voice = ttsVoiceList.find(function(v) { return v.id === voiceId; });
+      if (!voice) return;
+      
+      var url = voice.exampleUrl ? (voice.exampleUrl + '').trim() : '';
+      if (!url) {
+        alert('该音色暂无试听（无官方样例链接）');
+        return;
+      }
+      
+      // 停止之前的试听
+      if (window._dubPreviewAudio) {
+        try {
+          window._dubPreviewAudio.pause();
+          window._dubPreviewAudio = null;
+        } catch (e) {}
+      }
+      
+      // 更新按钮状态
+      var btn = voiceListGrid.querySelector('.dub-voice-preview-btn[data-voice-id="' + voiceId + '"]');
+      if (btn) btn.textContent = '⏸';
+      
+      // 创建音频并播放
+      var audio = new Audio(url);
+      window._dubPreviewAudio = audio;
+      
+      audio.addEventListener('ended', function() {
+        if (btn) btn.textContent = '▶';
+        window._dubPreviewAudio = null;
+      });
+      
+      audio.addEventListener('error', function() {
+        if (btn) btn.textContent = '▶';
+        alert('试听加载失败');
+        window._dubPreviewAudio = null;
+      });
+      
+      audio.play().catch(function(err) {
+        if (btn) btn.textContent = '▶';
+        alert('试听播放失败');
+        window._dubPreviewAudio = null;
+      });
+    }
+    
+    // 更新底部按钮文本和滑块值
+    function updateFooterButtons() {
+      if (currentAudioMode === 'tts') {
+        if (speedValue) speedValue.textContent = currentSettings.voiceSpeed.toFixed(1);
+        if (speedSlider) speedSlider.value = currentSettings.voiceSpeed;
+        if (voiceLangText) {
+          var langLabel = currentSettings.voiceLanguage === 'zh' ? '中文' : 
+                         currentSettings.voiceLanguage === 'en' ? '英文' :
+                         currentSettings.voiceLanguage === 'ja' ? '日文' :
+                         currentSettings.voiceLanguage === 'ko' ? '韩文' : currentSettings.voiceLanguage;
+          voiceLangText.textContent = langLabel;
+        }
+      } else if (currentAudioMode === 'text2audio') {
+        if (durationSliderValue) durationSliderValue.textContent = currentSettings.duration.toFixed(1);
+        if (durationSlider) durationSlider.value = currentSettings.duration;
+      }
+    }
+    
+    // 初始化语速按钮和下拉框
+    var speedSliderInitialized = false;
+    function initSpeedSlider() {
+      if (!speedSlider || !speedValue || !speedBtn || !speedDropdown) return;
+      
+      // 设置初始值
+      speedSlider.value = currentSettings.voiceSpeed;
+      speedValue.textContent = currentSettings.voiceSpeed.toFixed(1);
+      
+      // 只绑定一次事件监听器，避免重复绑定
+      if (!speedSliderInitialized) {
+        // 滑块事件
+        speedSlider.addEventListener('input', function() {
+          currentSettings.voiceSpeed = parseFloat(this.value);
+          speedValue.textContent = currentSettings.voiceSpeed.toFixed(1);
+        });
+        
+        // 设置下拉框样式
+        speedDropdown.style.position = 'fixed';
+        speedDropdown.style.zIndex = '1000';
+        
+        // 按钮点击事件
+        speedBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var rect = speedBtn.getBoundingClientRect();
+          var computedDisplay = window.getComputedStyle(speedDropdown).display;
+          var isVisible = computedDisplay === 'block';
+          
+          // 关闭其他下拉框
+          if (durationDropdown) durationDropdown.style.display = 'none';
+          if (voiceLangDropdown) voiceLangDropdown.style.display = 'none';
+          
+          if (isVisible) {
+            speedDropdown.style.display = 'none';
+            // 移除箭头旋转
+            var arrow = speedBtn.querySelector('.t2i-dropdown-arrow');
+            if (arrow) arrow.style.transform = '';
+          } else {
+            speedDropdown.style.display = 'block';
+            speedDropdown.style.visibility = 'hidden';
+            var dropdownHeight = speedDropdown.offsetHeight || 80;
+            speedDropdown.style.visibility = 'visible';
+            
+            speedDropdown.style.left = rect.left + 'px';
+            var topPosition = rect.top - dropdownHeight - 8;
+            if (topPosition < 0) {
+              speedDropdown.style.top = (rect.bottom + 8) + 'px';
+            } else {
+              speedDropdown.style.top = topPosition + 'px';
+            }
+            // 箭头旋转
+            var arrow = speedBtn.querySelector('.t2i-dropdown-arrow');
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
+          }
+        });
+        
+        speedSliderInitialized = true;
+      }
+    }
+    
+    // 初始化时长滑块（保留用于兼容，但实际使用 initDurationSliderForText2Audio）
+    function initDurationSlider() {
+      // 这个函数已不再使用，实际初始化在 initDurationSliderForText2Audio 中
+      // 保留此函数以避免调用错误，但不执行任何操作
+      return;
+    }
+    
+    // 初始化文生音效的时长按钮和下拉框
+    var durationSliderInitialized = false;
+    function initDurationSliderForText2Audio() {
+      if (!durationSlider || !durationSliderValue || !durationBtn || !durationDropdown) return;
+      
+      // 设置初始值
+      durationSlider.value = currentSettings.duration;
+      durationSliderValue.textContent = currentSettings.duration.toFixed(1);
+      var durationDropdownValue = document.getElementById('dub-duration-dropdown-value');
+      if (durationDropdownValue) {
+        durationDropdownValue.textContent = currentSettings.duration.toFixed(1);
+      }
+      
+      // 只绑定一次事件监听器，避免重复绑定
+      if (!durationSliderInitialized) {
+        // 滑块事件
+        var durationDropdownValue = document.getElementById('dub-duration-dropdown-value');
+        durationSlider.addEventListener('input', function() {
+          currentSettings.duration = parseFloat(this.value);
+          durationSliderValue.textContent = currentSettings.duration.toFixed(1);
+          if (durationDropdownValue) {
+            durationDropdownValue.textContent = currentSettings.duration.toFixed(1);
+          }
+        });
+        
+        // 设置下拉框样式
+        durationDropdown.style.position = 'fixed';
+        durationDropdown.style.zIndex = '1000';
+        
+        // 按钮点击事件
+        durationBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var rect = durationBtn.getBoundingClientRect();
+          var computedDisplay = window.getComputedStyle(durationDropdown).display;
+          var isVisible = computedDisplay === 'block';
+          
+          // 关闭其他所有下拉框
+          closeAllDropdowns(durationDropdown);
+          
+          if (isVisible) {
+            durationDropdown.style.display = 'none';
+            // 移除箭头旋转
+            var arrow = durationBtn.querySelector('.t2i-dropdown-arrow');
+            if (arrow) arrow.style.transform = '';
+          } else {
+            durationDropdown.style.display = 'block';
+            durationDropdown.style.visibility = 'hidden';
+            var dropdownHeight = durationDropdown.offsetHeight || 80;
+            durationDropdown.style.visibility = 'visible';
+            
+            durationDropdown.style.left = rect.left + 'px';
+            var topPosition = rect.top - dropdownHeight - 8;
+            if (topPosition < 0) {
+              durationDropdown.style.top = (rect.bottom + 8) + 'px';
+            } else {
+              durationDropdown.style.top = topPosition + 'px';
+            }
+            // 箭头旋转
+            var arrow = durationBtn.querySelector('.t2i-dropdown-arrow');
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
+          }
+        });
+        
+        durationSliderInitialized = true;
+      }
+    }
+    
+    // 初始化音色语种下拉框
+    function initVoiceLangDropdown() {
+      if (!voiceLangDropdown || !voiceLangBtn) return;
+      
+      updateVoiceLangDropdown();
+      
+      voiceLangDropdown.style.display = 'none';
+      voiceLangDropdown.style.position = 'fixed';
+      voiceLangDropdown.style.zIndex = '1000';
+      
+      voiceLangBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        var currentDisplay = voiceLangDropdown.style.display;
+        var isVisible = currentDisplay === 'block' || window.getComputedStyle(voiceLangDropdown).display === 'block';
+        
+        // 关闭其他所有下拉框
+        closeAllDropdowns(voiceLangDropdown);
+        
+        if (isVisible) {
+          voiceLangDropdown.style.display = 'none';
+        } else {
+          var rect = voiceLangBtn.getBoundingClientRect();
+          voiceLangDropdown.style.display = 'block';
+          voiceLangDropdown.style.visibility = 'hidden';
+          var dropdownHeight = voiceLangDropdown.offsetHeight || 100;
+          voiceLangDropdown.style.visibility = 'visible';
+          voiceLangDropdown.style.left = rect.left + 'px';
+          var topPosition = rect.top - dropdownHeight - 4;
+          if (topPosition < 0) {
+            voiceLangDropdown.style.top = (rect.bottom + 4) + 'px';
+          } else {
+            voiceLangDropdown.style.top = topPosition + 'px';
+          }
+        }
+      });
+    }
+    
+    // 更新音色语种下拉框内容
+    function updateVoiceLangDropdown() {
+      if (!voiceLangDropdown) return;
+      
+      var langs = [
+        { value: 'zh', label: '中文' },
+        { value: 'en', label: '英文' },
+        { value: 'ja', label: '日文' },
+        { value: 'ko', label: '韩文' }
+      ];
+      
+      var langHtml = langs.map(function(l) {
+        var active = l.value === currentSettings.voiceLanguage ? 'active' : '';
+        return '<div class="t2i-model-dropdown-item ' + active + '" data-lang="' + l.value + '">' + l.label + '</div>';
+      }).join('');
+      voiceLangDropdown.innerHTML = langHtml;
+      
+      voiceLangDropdown.querySelectorAll('.t2i-model-dropdown-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var lang = item.getAttribute('data-lang');
+          currentSettings.voiceLanguage = lang;
+          voiceLangDropdown.querySelectorAll('.t2i-model-dropdown-item').forEach(function(i) {
+            i.classList.remove('active');
+          });
+          item.classList.add('active');
+          voiceLangDropdown.style.display = 'none';
+          updateFooterButtons();
+        });
+      });
+    }
+    
+    // 初始化推荐音效网格
+    function initRecommendedSounds() {
+      if (!recommendedGrid) return;
+      
+      var html = RECOMMENDED_SOUND_EFFECTS.map(function(effect) {
+        return '<div class="dub-recommended-item" data-prompt="' + String(effect.prompt).replace(/"/g, '&quot;') + '">' +
+          '<div class="dub-recommended-icon">' +
+          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
+          '<path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="2"></path>' +
+          '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2"></path>' +
+          '</svg>' +
+          '</div>' +
+          '<span class="dub-recommended-name">' + String(effect.name).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+          '</div>';
+      }).join('');
+      
+      recommendedGrid.innerHTML = html;
+      
+      // 绑定点击事件
+      recommendedGrid.querySelectorAll('.dub-recommended-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var prompt = item.getAttribute('data-prompt');
+          if (promptText2audio && prompt) {
+            promptText2audio.value = prompt;
+            promptText2audio.focus();
+          }
+        });
+      });
+    }
+    
+    
+    // 添加视频预览（覆盖卡片内容）
+    function addVideoPreview(videoUrl, videoId, file) {
+      if (!videoCard || !videoPreview) return;
+      
+      var cardContent = videoCard.querySelector('.dub-video-card-content');
+      if (cardContent) cardContent.style.display = 'none';
+      
+      var previewUrl = '';
+      if (file) {
+        previewUrl = URL.createObjectURL(file);
+      } else if (videoUrl) {
+        previewUrl = videoUrl;
+      }
+      
+      videoPreview.style.display = 'block';
+      if (previewUrl && /\.(mp4|webm|mov)$/i.test(previewUrl)) {
+        videoPreview.innerHTML = '<video src="' + previewUrl.replace(/"/g, '&quot;') + '" class="dub-video-preview-video" muted playsinline></video><span class="dub-video-remove-btn">×</span>';
+      } else {
+        var previewText = videoId ? '视频ID: ' + videoId : (videoUrl ? '视频URL: ' + videoUrl.substring(0, 30) + '...' : '视频文件');
+        videoPreview.innerHTML = '<div class="dub-video-preview-text">' + previewText + '</div><span class="dub-video-remove-btn">×</span>';
+      }
+      
+      var removeBtn = videoPreview.querySelector('.dub-video-remove-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          removeVideoPreview();
+        });
+      }
+      
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        var videoEl = videoPreview.querySelector('video');
+        if (videoEl) {
+          videoEl.onload = function() {
+            URL.revokeObjectURL(previewUrl);
+          };
+        }
+      }
+    }
+    
+    // 移除视频预览（恢复卡片内容）
+    function removeVideoPreview() {
+      if (videoCard && videoPreview) {
+        var cardContent = videoCard.querySelector('.dub-video-card-content');
+        if (cardContent) cardContent.style.display = 'flex';
+        videoPreview.style.display = 'none';
+        videoPreview.innerHTML = '';
+      }
+      currentVideoUrl = '';
+      currentVideoId = '';
+      currentVideoFile = null;
+      if (videoFileInput) videoFileInput.value = '';
+      if (videoInput) videoInput.value = '';
+    }
+    
+    // 历史创作选择功能：打开视频选择模态框
+    function openHistoryVideoSelector(callback) {
+      var works = (window.MediaStudio && window.MediaStudio.getWorks()) || [];
+      var videoWorks = works.filter(function(w) {
+        return w.videos && w.videos.length > 0 && (w.type === 'text2video' || w.type === 'img2video' || w.type === 'lipsync');
+      });
+      
+      if (videoWorks.length === 0) {
+        alert('暂无历史视频作品');
+        return;
+      }
+      
+      // 创建模态框
+      var modal = document.createElement('div');
+      modal.className = 'dub-history-modal-overlay';
+      modal.innerHTML = [
+        '<div class="dub-history-modal-content">',
+        '  <div class="dub-history-modal-header">',
+        '    <h3>选择历史视频</h3>',
+        '    <button type="button" class="dub-history-modal-close">×</button>',
+        '  </div>',
+        '  <div class="dub-history-modal-body" id="dub-history-modal-body">',
+        '  </div>',
+        '</div>'
+      ].join('');
+      
+      var modalBody = modal.querySelector('#dub-history-modal-body');
+      var videosHtml = '';
+      
+      videoWorks.forEach(function(work) {
+        if (work.videos && work.videos.length > 0) {
+          work.videos.forEach(function(videoUrl) {
+            videosHtml += '<div class="dub-history-video-item" data-url="' + String(videoUrl).replace(/"/g, '&quot;') + '">' +
+              '<video src="' + String(videoUrl).replace(/"/g, '&quot;') + '" muted playsinline preload="metadata"></video>' +
+              '</div>';
+          });
+        }
+      });
+      
+      modalBody.innerHTML = videosHtml || '<div style="padding: 40px; text-align: center; color: var(--muted);">暂无视频</div>';
+      
+      // 绑定视频选择事件
+      modalBody.querySelectorAll('.dub-history-video-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var url = item.getAttribute('data-url');
+          if (callback && url) {
+            callback(url);
+          }
+          document.body.removeChild(modal);
+        });
+      });
+      
+      // 关闭按钮
+      var closeBtn = modal.querySelector('.dub-history-modal-close');
+      closeBtn.addEventListener('click', function() {
+        document.body.removeChild(modal);
+      });
+      
+      // 点击背景关闭
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+      
+      document.body.appendChild(modal);
+    }
+    
+    // 视频卡片点击事件
+    if (videoCard && videoFileInput) {
+      videoCard.addEventListener('click', function(e) {
+        if (e.target.closest('.dub-video-remove-btn')) return;
+        if (e.target.closest('.dub-video-preview')) return;
+        if (e.target.closest('.dub-video-sub-text')) return; // 历史创作文本单独处理
+        videoFileInput.click();
+      });
+      
+      // 历史创作文本点击
+      var historyText = videoCard.querySelector('.dub-video-sub-text');
+      if (historyText) {
+        historyText.style.cursor = 'pointer';
+        historyText.style.color = 'var(--primary)';
+        historyText.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openHistoryVideoSelector(function(url) {
+            currentVideoUrl = url;
+            if (videoInput) videoInput.value = url;
+            addVideoPreview(url, '', null);
+          });
+        });
+      }
+      
+      videoFileInput.addEventListener('change', function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        currentVideoFile = file;
+        addVideoPreview('', '', file);
+        videoFileInput.value = '';
+        
+        // 上传视频文件到服务器
+        uploadVideoFile(file)
+          .then(function(url) {
+            currentVideoUrl = url;
+            currentVideoId = '';
+            currentVideoFile = null;
+            if (videoInput) videoInput.value = url;
+            addVideoPreview(url, '', null);
+          })
+          .catch(function(err) {
+            currentVideoFile = null;
+            removeVideoPreview();
+            alert('视频上传失败：' + (err.message || String(err)));
+          });
+      });
+    }
+    
+    // 视频URL输入框事件（可选输入）
     if (videoInput) {
-      videoInput.addEventListener('blur', function () {
-        var val = videoInput.value.trim();
+      videoInput.addEventListener('blur', function() {
+        var val = this.value.trim();
         if (val) {
           var isId = /^\d+$/.test(val);
           if (isId) {
             currentVideoId = val;
             currentVideoUrl = '';
+            addVideoPreview('', val, null);
           } else if (/^https?:\/\//i.test(val)) {
             currentVideoUrl = val;
             currentVideoId = '';
+            addVideoPreview(val, '', null);
           }
         } else {
-          currentVideoUrl = '';
-          currentVideoId = '';
+          removeVideoPreview();
         }
       });
     }
-
-    btn.addEventListener('click', function () {
-      var apiKey = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
-      if (!apiKey) {
-        setResult('<span class="msg-warning">请先在「设置」中配置并保存云雾 API Key</span>', true);
-        return;
-      }
-      var isText2Audio = (document.getElementById('dub-mode') && document.getElementById('dub-mode').value === 'text2audio');
-
-      if (isText2Audio) {
-        var prompt = getVal('dub-prompt', '').trim();
-        if (!prompt) {
-          setResult('<span class="msg-warning">请输入文本内容</span>', true);
-          return;
+    
+    // 点击外部关闭下拉框
+    setTimeout(function() {
+      document.addEventListener('click', function(e) {
+        if (voiceLangDropdown && voiceLangBtn && !voiceLangBtn.contains(e.target) && !voiceLangDropdown.contains(e.target)) {
+          voiceLangDropdown.style.display = 'none';
         }
-        var isTts = (document.getElementById('dub-text2audio-type') && document.getElementById('dub-text2audio-type').value === 'tts');
-        var submitUrl = isTts ? (apiOrigin() + '/api/yunwu/audio/tts') : (apiOrigin() + '/api/yunwu/audio/text-to-audio');
-        var queryPath = isTts ? TTS_PATH : TEXT2AUDIO_PATH;
-        var body = { apiKey: apiKey };
-        if (isTts) {
-          body.text = prompt;
-          body.voice_id = getVal('dub-voice-id', 'genshin_vindi2') || 'genshin_vindi2';
-          body.voice_language = getVal('dub-voice-language', 'zh') || 'zh';
-          body.voice_speed = getVal('dub-voice-speed', '1.0') || '1.0';
-        } else {
-          body.prompt = prompt;
-          var duration = parseFloat(getVal('dub-duration', '5'), 10);
-          if (isNaN(duration) || duration < 3 || duration > 10) duration = 5;
-          body.duration = Math.round(duration * 10) / 10;
+        if (speedDropdown && speedBtn && !speedBtn.contains(e.target) && !speedDropdown.contains(e.target)) {
+          speedDropdown.style.display = 'none';
+          var speedArrow = speedBtn.querySelector('.t2i-dropdown-arrow');
+          if (speedArrow) speedArrow.style.transform = '';
         }
-
-        setResult('正在提交任务…', true);
-        btn.disabled = true;
-        var workId = null;
-        fetch(submitUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+        if (durationDropdown && durationBtn && !durationBtn.contains(e.target) && !durationDropdown.contains(e.target)) {
+          durationDropdown.style.display = 'none';
+          var durationArrow = durationBtn.querySelector('.t2i-dropdown-arrow');
+          if (durationArrow) durationArrow.style.transform = '';
+        }
+      });
+    }, 100);
+    
+    // 初始化语速按钮和音色语种下拉框
+    initSpeedSlider();
+    initVoiceLangDropdown();
+    // 时长按钮在 switchAudioMode('text2audio') 时通过 initDurationSliderForText2Audio() 初始化
+    
+    // 初始化时更新按钮显示
+    updateFooterButtons();
+    
+    // 加载 TTS 音色列表
+    function loadTtsVoices() {
+      fetch(apiOrigin() + '/api/tts/voices', { method: 'GET', headers: { 'Content-Type': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var list = (data && data.data && data.data.ttsList) || (data && data.ttsList) || [];
+          if (!Array.isArray(list)) list = [];
+          ttsVoiceList = [];
+          list.forEach(function (v) {
+            var id = (v && (v.voice_id || v.speakerId || v.id || v.voiceId)) || '';
+            var name = (v && (v.name || v.voice_name || v.label)) || id || '未知';
+            var lang = (v && (v.language || v.voice_language || v.lang)) || '';
+            var exampleUrl = (v && (v.exampleUrl || v.example_url || v.preview_url || v.sample_url)) || '';
+            if (id) {
+              ttsVoiceList.push({ id: id, name: name, language: lang, exampleUrl: exampleUrl });
+            }
+          });
+          if (ttsVoiceList.length === 0) {
+            ttsVoiceList = [{ id: 'genshin_vindi2', name: '阳光少年', language: 'zh', exampleUrl: '' }];
+          }
+          // 初始化试听列表
+          if (currentAudioMode === 'tts') {
+            initVoiceList();
+          }
         })
-          .then(function (r) {
-            return r.text().then(function (t) {
-              var data = null;
-              try { data = t ? JSON.parse(t) : null; } catch (e) {}
-              if (!r.ok) {
-                var msg = (data && (data.message || data.error || (data.error && data.error.message))) || t || ('HTTP ' + r.status);
-                if (r.status === 400 && isTts && data && (data.message || data.data)) {
-                  msg = (data.message || '') + (data.data && typeof data.data === 'object' ? ' ' + JSON.stringify(data.data) : '');
-                }
-                throw new Error(msg || ('请求失败 ' + r.status));
-              }
-              return data != null ? data : {};
-            });
-          })
-          .then(function (data) {
-            var taskId = (data && data.data && (data.data.id || data.data.task_id || data.data.request_id)) ||
-              (data && data.id) || (data && data.task_id) || (data && data.request_id) ||
-              (data && data.data && data.data.request_id);
-            if (!taskId) {
-              var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID，请检查 API 响应';
-              setResult('<span class="msg-error">✗ ' + String(errMsg).replace(/\n/g, '<br>') + '</span><pre>' + JSON.stringify(data || {}, null, 2) + '</pre>', true);
-              btn.disabled = false;
-              return Promise.reject(new Error(errMsg));
-            }
-            if (window.MediaStudio && window.MediaStudio.addWork) {
-              workId = window.MediaStudio.addWork({
-                type: isTts ? 'tts' : 'text2audio',
-                status: 'processing',
-                taskId: taskId,
-                title: (prompt || (isTts ? '语音合成' : '文生音效')).slice(0, 80),
-                images: [],
-                videos: [],
-                audios: [],
-              });
-            }
-            setResult('任务已创建，轮询中: ' + taskId + ' …', true);
-            var setProgress = function (txt) { setResult(txt, true); };
-            return new Promise(function (resolve, reject) {
-              pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0, queryPath);
-            });
-          })
-          .then(function (result) { handleDubResult(result, workId, btn); })
-          .catch(function (err) { handleDubError(err, workId, btn); });
-        return;
+        .catch(function () {
+          ttsVoiceList = [{ id: 'genshin_vindi2', name: '阳光少年', language: 'zh', exampleUrl: '' }];
+          // 初始化试听列表
+          if (currentAudioMode === 'tts') {
+            initVoiceList();
+          }
+        });
+    }
+    
+    // 初始切换模式
+    switchAudioMode(currentAudioMode);
+    
+    // 如果初始模式是文生音效，确保时长滑动条已初始化
+    if (currentAudioMode === 'text2audio') {
+      initDurationSliderForText2Audio();
+    }
+    
+    // 加载 TTS 音色列表（如果是语音合成模式）
+    if (currentAudioMode === 'tts') {
+      loadTtsVoices();
+    }
+    
+    // 同步音效和配乐输入框的值到设置
+    if (soundEffectInput) {
+      soundEffectInput.addEventListener('input', function() {
+        currentSettings.soundEffectPrompt = this.value.trim();
+      });
+      if (currentSettings.soundEffectPrompt) {
+        soundEffectInput.value = currentSettings.soundEffectPrompt;
       }
-
-      var videoInputValue = getVal('dub-video', '') || currentVideoUrl || currentVideoId || '';
-      if (!videoInputValue) {
-        setResult('<span class="msg-warning">请输入视频 URL 或视频ID</span>', true);
-        return;
+    }
+    if (bgmInput) {
+      bgmInput.addEventListener('input', function() {
+        currentSettings.bgmPrompt = this.value.trim();
+      });
+      if (currentSettings.bgmPrompt) {
+        bgmInput.value = currentSettings.bgmPrompt;
       }
+    }
+    // ASMR模式开关
+    if (asmrCheckbox) {
+      asmrCheckbox.addEventListener('change', function() {
+        currentSettings.asmrMode = this.checked;
+      });
+      asmrCheckbox.checked = currentSettings.asmrMode;
+    }
+    
+    // 提交视频生音效请求
+    function submitVideo2Audio(videoInputValue, apiKey, soundEffectPrompt, bgmPrompt) {
+      soundEffectPrompt = soundEffectPrompt || (soundEffectInput ? soundEffectInput.value.trim() : '') || '';
+      bgmPrompt = bgmPrompt || (bgmInput ? bgmInput.value.trim() : '') || '';
+      
+      // 更新设置
+      if (soundEffectPrompt) currentSettings.soundEffectPrompt = soundEffectPrompt;
+      if (bgmPrompt) currentSettings.bgmPrompt = bgmPrompt;
 
-      var body = { apiKey: apiKey };
+      var body = {};
       if (/^\d+$/.test(videoInputValue)) {
         body.video_id = videoInputValue;
       } else {
         body.video_url = videoInputValue;
       }
-      var soundPrompt = getVal('dub-sound-effect-prompt', '').trim();
-      if (soundPrompt) body.sound_effect_prompt = soundPrompt;
-      var bgmPrompt = getVal('dub-bgm-prompt', '').trim();
+      if (soundEffectPrompt) body.sound_effect_prompt = soundEffectPrompt;
       if (bgmPrompt) body.bgm_prompt = bgmPrompt;
-      var asmrEl = document.getElementById('dub-asmr-mode');
-      body.asmr_mode = !!(asmrEl && asmrEl.checked);
-
-      setResult('正在提交任务…', true);
-      btn.disabled = true;
+      body.asmr_mode = currentSettings.asmrMode;
+      
+      generateBtn.disabled = true;
+      
+      // 立即创建作品记录，显示"处理中"状态
       var workId = null;
+      var workType = 'dubbing';
+      var promptText = '';
+      if (soundEffectPrompt) promptText += '音效：' + soundEffectPrompt + ' ';
+      if (bgmPrompt) promptText += '配乐：' + bgmPrompt;
+      if (window.MediaStudio && window.MediaStudio.addWork) {
+        workId = window.MediaStudio.addWork({
+          type: workType,
+          status: 'processing',
+          taskId: null, // 临时为null，等待API返回
+          prompt: promptText || '视频生音效',
+          title: promptText || '视频生音效',
+          images: [],
+          videos: [],
+          audios: [],
+          referenceVideos: videoInputValue ? [videoInputValue] : [],
+          progress: 0,
+          progressStatus: '正在提交请求...'
+        });
+        
+        // 刷新作品列表显示
+        if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+          window.MediaStudio.refreshWorksList();
+        }
+      }
+      
+      var authHeadersV2A = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
       fetch(apiOrigin() + '/api/yunwu/audio/video-to-audio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeadersV2A),
         body: JSON.stringify(body),
       })
-        .then(function (r) {
-          if (!r.ok) {
-            return r.text().then(function (t) {
-              throw new Error('请求失败 ' + r.status + (r.status === 404 ? '（接口未找到，请确认服务已重启）' : '') + ': ' + (t ? t.substring(0, 150).replace(/\s+/g, ' ') : ''));
-            });
+          .then(function(r) {
+        if (!r.ok) {
+              return r.text().then(function(t) {
+            var errMsg = '请求失败 ' + r.status + (r.status === 404 ? '（接口未找到，请确认服务已重启）' : '') + ': ' + (t ? t.substring(0, 150).replace(/\s+/g, ' ') : '');
+            
+            // 更新作品状态为失败
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              window.MediaStudio.updateWork(workId, {
+                status: 'failed',
+                progressStatus: errMsg
+              });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                window.MediaStudio.refreshWorksList();
+              }
+            }
+            
+            throw new Error(errMsg);
+          });
+        }
+        return r.json();
+      })
+          .then(function(data) {
+        var taskId = (data && data.data && (data.data.id || data.data.task_id || data.data.request_id)) ||
+          (data && data.id) || (data && data.task_id) || (data && data.request_id) ||
+          (data && data.data && data.data.request_id);
+        if (!taskId) {
+              var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID';
+              generateBtn.disabled = false;
+              
+              // 更新作品状态为失败
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                window.MediaStudio.updateWork(workId, {
+                  status: 'failed',
+                  progressStatus: errMsg
+                });
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                  window.MediaStudio.refreshWorksList();
+                }
+              }
+              
+          return Promise.reject(new Error(errMsg));
+        }
+            taskId = String(taskId);
+        
+        // 更新作品记录的taskId
+        if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+          window.MediaStudio.updateWork(workId, {
+            taskId: taskId,
+            progressStatus: '任务已提交，等待处理...'
+          });
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+            window.MediaStudio.refreshWorksList();
           }
-          return r.json();
+        }
+            
+            var setProgress = function(txt) {
+              // 进度更新（已移除聊天显示）
+            };
+            
+            return new Promise(function(resolve, reject) {
+          pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0, VIDEO2AUDIO_PATH);
+        });
+      })
+          .then(function(result) {
+        var audios = (result && result.audios) || [];
+            if (audios.length === 0) {
+              generateBtn.disabled = false;
+              return;
+            }
+            
+        if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+          var updates = {
+                status: 'ready',
+            audios: audios,
+            progress: null,
+            progressStatus: null
+          };
+          if (audios.length) updates.resultUrl = audios[0];
+              if (result.audioId) updates.audioId = result.audioId;
+          window.MediaStudio.updateWork(workId, updates);
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+        }
+            
+            generateBtn.disabled = false;
+          })
+          .catch(function(err) {
+        if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+          window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+        }
+            generateBtn.disabled = false;
+      });
+    }
+    
+    // 生成按钮点击事件
+    if (generateBtn) {
+      generateBtn.addEventListener('click', function() {
+      var apiKey = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
+      if (!apiKey) {
+        alert('请先登录，由管理员在后台分配云雾 API Key 后即可使用');
+        return;
+      }
+
+        var prompt = '';
+        if (currentAudioMode === 'tts') {
+          prompt = getVal('dub-prompt', '').trim();
+        } else if (currentAudioMode === 'text2audio') {
+          prompt = promptText2audio ? promptText2audio.value.trim() : '';
+        }
+        
+        if (currentAudioMode === 'tts') {
+          // 语音合成
+        if (!prompt) {
+            alert('请输入要朗读的文本');
+          return;
+        }
+          if (prompt.length > 2000) {
+            alert('文本不能超过2000个字符');
+            return;
+          }
+          
+          var body = {
+            text: prompt,
+            voice_id: currentSettings.voiceId,
+            voice_language: currentSettings.voiceLanguage,
+            voice_speed: currentSettings.voiceSpeed
+          };
+          
+          generateBtn.disabled = true;
+        
+        // 立即创建作品记录，显示"处理中"状态
+        var workId = null;
+        if (window.MediaStudio && window.MediaStudio.addWork) {
+          workId = window.MediaStudio.addWork({
+            type: 'tts',
+            status: 'processing',
+            taskId: null, // 临时为null，等待API返回
+            prompt: prompt,
+            title: prompt.toString().slice(0, 80),
+            images: [],
+            videos: [],
+            audios: [],
+            progress: 0,
+            progressStatus: '正在提交请求...'
+          });
+          
+          // 刷新作品列表显示
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+            window.MediaStudio.refreshWorksList();
+          }
+        }
+        
+          var authHeadersTts = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
+          fetch(apiOrigin() + '/api/yunwu/audio/tts', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeadersTts),
+          body: JSON.stringify(body),
         })
-        .then(function (data) {
-          var taskId = (data && data.data && (data.data.id || data.data.task_id || data.data.request_id)) ||
-            (data && data.id) || (data && data.task_id) || (data && data.request_id) ||
-            (data && data.data && data.data.request_id);
-          if (!taskId) {
-            var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID，请检查 API 响应';
-            setResult('<span class="msg-error">✗ ' + String(errMsg).replace(/\n/g, '<br>') + '</span><pre>' + JSON.stringify(data || {}, null, 2) + '</pre>', true);
-            btn.disabled = false;
-            return Promise.reject(new Error(errMsg));
+            .then(function(r) {
+              return r.text().then(function(t) {
+              var data = null;
+              try { data = t ? JSON.parse(t) : null; } catch (e) {}
+              if (!r.ok) {
+                var msg = (data && (data.message || data.error || (data.error && data.error.message))) || t || ('HTTP ' + r.status);
+                  if (r.status === 400 && data && (data.message || data.data)) {
+                  msg = (data.message || '') + (data.data && typeof data.data === 'object' ? ' ' + JSON.stringify(data.data) : '');
+                }
+                
+                // 更新作品状态为失败
+                if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                  window.MediaStudio.updateWork(workId, {
+                    status: 'failed',
+                    progressStatus: msg || ('请求失败 ' + r.status)
+                  });
+                  if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                    window.MediaStudio.refreshWorksList();
+                  }
+                }
+                
+                throw new Error(msg || ('请求失败 ' + r.status));
+              }
+              return data != null ? data : {};
+            });
+          })
+            .then(function(data) {
+            var taskId = (data && data.data && (data.data.id || data.data.task_id || data.data.request_id)) ||
+              (data && data.id) || (data && data.task_id) || (data && data.request_id) ||
+              (data && data.data && data.data.request_id);
+            if (!taskId) {
+                var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID';
+                generateBtn.disabled = false;
+                
+                // 更新作品状态为失败
+                if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                  window.MediaStudio.updateWork(workId, {
+                    status: 'failed',
+                    progressStatus: errMsg
+                  });
+                  if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                    window.MediaStudio.refreshWorksList();
+                  }
+                }
+                
+              return Promise.reject(new Error(errMsg));
+            }
+              taskId = String(taskId);
+            
+            // 更新作品记录的taskId
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              window.MediaStudio.updateWork(workId, {
+                taskId: taskId,
+                progressStatus: '任务已提交，等待处理...'
+              });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                window.MediaStudio.refreshWorksList();
+              }
+            }
+              
+              var setProgress = function(txt) {
+                // 进度更新（已移除聊天显示）
+              };
+              
+              return new Promise(function(resolve, reject) {
+                pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0, TTS_PATH);
+            });
+          })
+            .then(function(result) {
+              var audios = (result && result.audios) || [];
+              if (audios.length === 0) {
+                generateBtn.disabled = false;
+        return;
+      }
+
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                var updates = {
+                  status: 'ready',
+                  audios: audios,
+                  progress: null,
+                  progressStatus: null
+                };
+                if (audios.length) updates.resultUrl = audios[0];
+                if (result.audioId) updates.audioId = result.audioId;
+                window.MediaStudio.updateWork(workId, updates);
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+              }
+              
+              generateBtn.disabled = false;
+            })
+            .catch(function(err) {
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+              }
+              generateBtn.disabled = false;
+            });
+        } else if (currentAudioMode === 'text2audio') {
+          // 文生音效
+          if (!prompt) {
+            alert('请输入音效描述');
+            return;
           }
+          if (prompt.length > 2000) {
+            alert('音效描述不能超过2000个字符');
+            return;
+          }
+          
+          // 验证duration范围：3.0-10.0秒，支持小数点后一位
+          var duration = Math.round(currentSettings.duration * 10) / 10;
+          if (duration < 3.0 || duration > 10.0) {
+            alert('音频时长必须在3.0秒至10.0秒之间');
+            return;
+          }
+          
+          var body = {
+            prompt: prompt,
+            duration: duration.toFixed(1) // 转换为字符串，保留一位小数
+          };
+          
+          // 可选参数：external_task_id 和 callback_url
+          // 如果需要，可以从设置或其他地方获取
+          
+          generateBtn.disabled = true;
+          
+          // 立即创建作品记录，显示"处理中"状态
+          var workId = null;
           if (window.MediaStudio && window.MediaStudio.addWork) {
             workId = window.MediaStudio.addWork({
-              type: 'dubbing',
+              type: 'text2audio',
               status: 'processing',
-              taskId: taskId,
-              title: '视频生音效',
+              taskId: null, // 临时为null，等待API返回
+              prompt: prompt,
+              title: prompt.toString().slice(0, 80),
               images: [],
               videos: [],
               audios: [],
+              progress: 0,
+              progressStatus: '正在提交请求...'
             });
-          }
-          setResult('任务已创建，轮询中: ' + taskId + ' …', true);
-          var setProgress = function (txt) { setResult(txt, true); };
-          return new Promise(function (resolve, reject) {
-            pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0, VIDEO2AUDIO_PATH);
-          });
-        })
-        .then(function (result) {
-          var audios = (result && result.audios) || [];
-          var raw = result && result.raw;
-          var audioId = (result && result.audioId) || '';
-          if (!audios.length && raw) {
-            collectAudioUrls(raw, audios);
-            audios = [...new Set(audios.filter(Boolean))];
-          }
-          if (!audioId && raw) {
-            audioId = (raw && raw.data && raw.data.audio_id) ||
-              (raw && raw.data && raw.data.task_result && raw.data.task_result.audio_id) ||
-              (raw && raw.audio_id) ||
-              '';
-          }
-          var hasResources = audios.length > 0;
-          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
-            var updates = {
-              status: hasResources ? 'ready' : 'failed',
-              audios: audios,
-              progress: null,
-              progressStatus: null
-            };
-            if (audios.length) updates.resultUrl = audios[0];
-            if (audioId) updates.audioId = audioId;
-            window.MediaStudio.updateWork(workId, updates);
-            if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
-          }
-          if (!hasResources) {
-            var msg = '<span class="msg-warning">任务完成但未解析到音频链接。</span>';
-            if (raw) {
-              msg += '<br><details style="margin-top:12px"><summary style="cursor:pointer">点击展开「查询任务」原始响应（便于排查字段）</summary><pre style="max-height:240px;overflow:auto;font-size:11px;white-space:pre-wrap;background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;margin-top:8px">' + JSON.stringify(raw, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></details>';
+            
+            // 刷新作品列表显示
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+              window.MediaStudio.refreshWorksList();
             }
-            setResult(msg, true);
-            btn.disabled = false;
+          }
+          
+          var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
+          fetch(apiOrigin() + TEXT2AUDIO_PATH, {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
+            body: JSON.stringify(body),
+          })
+            .then(function(r) {
+              if (!r.ok) {
+                return r.json().then(function(errData) {
+                  throw new Error(errData.message || errData.error || '请求失败：' + r.status);
+                }).catch(function() {
+                  throw new Error('请求失败：' + r.status);
+                });
+              }
+              return r.json();
+            })
+            .then(function(data) {
+              // 根据Kling API响应格式解析taskId
+              var taskId = (data && data.data && (data.data.id || data.data.task_id || data.data.request_id || data.data.taskId)) ||
+                (data && data.id) || (data && data.task_id) || (data && data.request_id) || (data && data.taskId) ||
+                (data && data.data && data.data.request_id);
+              
+              if (!taskId) {
+                var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? 
+                  (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID';
+                // 错误已通过作品状态更新显示
+                generateBtn.disabled = false;
+                
+                // 更新作品状态为失败
+                if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                  window.MediaStudio.updateWork(workId, {
+                    status: 'failed',
+                    progressStatus: errMsg
+                  });
+                  if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                    window.MediaStudio.refreshWorksList();
+                  }
+                }
+                
+                return Promise.reject(new Error(errMsg));
+              }
+              taskId = String(taskId);
+              
+              // 更新作品记录的taskId
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                window.MediaStudio.updateWork(workId, {
+                  taskId: taskId,
+                  progressStatus: '任务已提交，等待处理...'
+                });
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                  window.MediaStudio.refreshWorksList();
+                }
+              }
+              
+              var setProgress = function(txt) {
+                // 进度更新（已移除聊天显示）
+              };
+              
+              return new Promise(function(resolve, reject) {
+                pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0, TEXT2AUDIO_PATH);
+              });
+            })
+            .then(function(result) {
+              var audios = (result && result.audios) || [];
+              if (audios.length === 0) {
+                generateBtn.disabled = false;
+                return;
+              }
+              
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                var updates = {
+                  status: 'ready',
+                  audios: audios,
+                  progress: null,
+                  progressStatus: null
+                };
+                if (audios.length) updates.resultUrl = audios[0];
+                if (result.audioId) updates.audioId = result.audioId;
+                window.MediaStudio.updateWork(workId, updates);
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+              }
+              
+              generateBtn.disabled = false;
+            })
+            .catch(function(err) {
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+              }
+              generateBtn.disabled = false;
+            });
+        } else {
+          // 视频生音效
+          var videoInputValue = (videoInput ? videoInput.value.trim() : '') || currentVideoUrl || currentVideoId || '';
+          
+          // 如果有上传的视频文件，先上传获取URL
+          if (currentVideoFile) {
+            generateBtn.disabled = true;
+            uploadVideoFile(currentVideoFile)
+              .then(function(url) {
+                currentVideoUrl = url;
+                currentVideoId = '';
+                currentVideoFile = null;
+                // 更新输入框
+                if (videoInput) videoInput.value = url;
+                // 继续提交API请求
+                submitVideo2Audio(url, apiKey);
+              })
+              .catch(function(err) {
+                currentVideoFile = null;
+                alert('视频上传失败：' + (err.message || String(err)));
+                generateBtn.disabled = false;
+              });
             return;
           }
-          var html = '<span class="msg-success">✓ 生成完成</span><br>';
-          var firstUrl = audios[0];
-          if (firstUrl) {
-            html += '<div class="t2i-out"><audio src="' + (firstUrl || '').replace(/"/g, '&quot;') + '" controls style="max-width:100%;"></audio><a href="' + (firstUrl || '#').replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">打开音频</a></div>';
+          
+          if (!videoInputValue) {
+            alert('请上传视频文件或输入视频 URL 或视频ID');
+            return;
           }
-          setResult(html, true);
-          btn.disabled = false;
-        })
-        .catch(function (err) {
-          setResult('<span class="msg-error">✗ ' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
-          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
-            window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
-          }
-          btn.disabled = false;
-        });
-    });
+          
+          // 获取音效和配乐描述
+          var soundEffectPrompt = soundEffectInput ? soundEffectInput.value.trim() : '';
+          var bgmPrompt = bgmInput ? bgmInput.value.trim() : '';
+          
+          submitVideo2Audio(videoInputValue, apiKey, soundEffectPrompt, bgmPrompt);
+        }
+      });
+    }
   }
 
   if (window.MediaStudio && window.MediaStudio.register) {

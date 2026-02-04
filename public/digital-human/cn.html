@@ -4,167 +4,188 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>国内数字人平台 - AI数字人管理系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./digital-human-cn.css">
 </head>
 <body data-back-url="../page.html?page=my-digital-worker">
-  <header class="header">
-    <div class="header-left">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <div class="logo">
-        <span class="logo-icon">🇨🇳</span>
-        <span class="logo-text">国内数字人平台</span>
-      </div>
+  <header class="studio-header">
+    <div class="studio-title">
+      <span>🇨🇳</span>
+      <span>国内数字人平台</span>
+    </div>
+    <div class="studio-header-actions">
+      <button class="studio-header-btn" id="dhSettingsBtn" title="设置">⚙️</button>
+      <a class="studio-header-btn studio-exit-btn" id="dhExitBtn" href="../page.html?page=my-digital-worker" title="退出">✕</a>
     </div>
   </header>
   
-  <!-- 侧边栏菜单 -->
-  <aside class="sidebar-menu">
-    <div class="menu-item">
-      <a class="menu-link active" href="javascript:void(0)" onclick="switchMenu('create')" data-menu="create">
-        <span class="menu-icon">✨</span>
-        <span class="menu-text">创建数字人</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('manage')" data-menu="manage">
-        <span class="menu-icon">👥</span>
-        <span class="menu-text">数字人管理</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('works')" data-menu="works">
-        <span class="menu-icon">🎬</span>
-        <span class="menu-text">作品管理</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('recite')" data-menu="recite">
-        <span class="menu-icon">📖</span>
-        <span class="menu-text">诵读文案</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('promote')" data-menu="promote">
-        <span class="menu-icon">🛒</span>
-        <span class="menu-text">卖货推送</span>
-      </a>
-    </div>
+  <div class="studio-body">
+  <!-- 左侧图标菜单栏（只有图标，悬停显示文字） -->
+  <aside class="studio-sidebar">
+    <nav class="studio-nav" id="dhNav">
+      <div class="studio-nav-item active" data-menu="create" title="创建数字人">
+        <span class="studio-nav-icon">👤</span>
+        <span class="studio-nav-text">创建数字人</span>
+      </div>
+      <div class="studio-nav-item" data-menu="recite" title="诵读文案">
+        <span class="studio-nav-icon">📝</span>
+        <span class="studio-nav-text">诵读文案</span>
+      </div>
+      <div class="studio-nav-item" data-menu="promote" title="卖货推送">
+        <span class="studio-nav-icon">🛍️</span>
+        <span class="studio-nav-text">卖货推送</span>
+      </div>
+    </nav>
   </aside>
   
-  <main class="main-content">
+  <main class="studio-content" id="dhContent">
+    <div class="studio-content-inner">
     <!-- 创建数字人内容 -->
     <div class="content-panel" id="createPanel">
-      <div class="page-title">
-        <h1>✨ 创建数字人</h1>
-        <p>三步创建专属数字人，让AI为您代言</p>
+      <!-- 平台选择按钮（最上侧，占满宽度） -->
+      <div class="platform-tabs-top">
+        <button class="platform-tab-top active" id="createPlatformHeyGen" data-platform="heygen" onclick="switchCreatePlatform('heygen')">
+          <span>HeyGen</span>
+        </button>
+        <button class="platform-tab-top" id="createPlatformYunwu" data-platform="yunwu" onclick="switchCreatePlatform('yunwu')">
+          <span>云雾</span>
+        </button>
       </div>
       
-      <!-- 步骤指示器 -->
-      <div class="steps-indicator">
-        <div class="step-item active" data-step="1">
-          <div class="step-number">1</div>
-          <div class="step-label">接入API</div>
+      <!-- HeyGen平台内容 -->
+      <div id="createHeyGenContent">
+        <!-- 视频模板列表 -->
+        <div style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="section-title" style="margin: 0;">选择数字人模板</div>
+            <button class="btn secondary" id="refreshAvatarBtn" onclick="loadHeyGenAvatars('create')" style="padding: 8px 16px; font-size: 0.85rem;">
+              <span id="refreshAvatarIcon">🔄</span>
+              <span id="refreshAvatarText">刷新模板</span>
+            </button>
+          </div>
+          <div id="avatarTemplateGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 0; min-height: 180px; max-height: 350px; overflow-y: auto; padding: 8px;">
+            <div id="avatarLoadingState" style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
+              <div style="font-size: 2rem; margin-bottom: 12px;">👆</div>
+              <div style="font-size: 0.9rem; margin-bottom: 8px;">点击右上角"刷新模板"按钮加载数字人模板</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请确保已配置并测试 HeyGen API Key</div>
+            </div>
+          </div>
         </div>
-        <div class="step-line"></div>
-        <div class="step-item" data-step="2">
-          <div class="step-number">2</div>
-          <div class="step-label">选择形象</div>
+        
+        <!-- 语音模板列表 -->
+        <div style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="section-title" style="margin: 0;">🎵 选择语音</div>
+            <button class="btn secondary" id="refreshVoiceBtn" onclick="loadHeyGenVoices('create')" style="padding: 8px 16px; font-size: 0.85rem;">
+              <span id="refreshVoiceIcon">🔄</span>
+              <span id="refreshVoiceText">刷新语音</span>
+            </button>
+          </div>
+          <div id="voiceGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 0; min-height: 180px; max-height: 350px; overflow-y: auto; padding: 8px;">
+            <div id="voiceLoadingState" style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
+              <div style="font-size: 2.5rem; margin-bottom: 12px; animation: pulse 2s infinite;">⏳</div>
+              <div style="font-size: 0.9rem; margin-bottom: 8px;">正在加载语音...</div>
+            </div>
+          </div>
         </div>
-        <div class="step-line"></div>
-        <div class="step-item" data-step="3">
-          <div class="step-number">3</div>
-          <div class="step-label">配置生成</div>
+        
+        <!-- 语速、音调、音量（同一行占满，自适应） -->
+        <div id="audioSettingsSection" class="audio-sliders-row">
+          <div class="slider-row">
+            <label class="slider-label">⚡ 语速</label>
+            <input type="range" class="slider-inline" id="speedSlider" min="0" max="15" value="5" oninput="updateSliderValue('speed')">
+            <span class="slider-value-inline" id="speedValue">5</span>
+          </div>
+          <div class="slider-row">
+            <label class="slider-label">🎵 音调</label>
+            <input type="range" class="slider-inline" id="pitchSlider" min="0" max="15" value="5" oninput="updateSliderValue('pitch')">
+            <span class="slider-value-inline" id="pitchValue">5</span>
+          </div>
+          <div class="slider-row">
+            <label class="slider-label">🔊 音量</label>
+            <input type="range" class="slider-inline" id="volumeSlider" min="0" max="15" value="5" oninput="updateSliderValue('volume')">
+            <span class="slider-value-inline" id="volumeValue">5</span>
+          </div>
+        </div>
+        
+        <!-- 文本框 -->
+        <div class="script-input-wrap" style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">输入文案</div>
+          <div class="script-textarea-wrapper">
+            <textarea class="script-textarea" id="scriptInput" placeholder="输入数字人要说的话...&#10;&#10;例如：大家好，欢迎来到我们的直播间！今天给大家带来超值好物..." oninput="updateCharCount()" style="min-height: 100px;"></textarea>
+            <span class="char-count-inline" id="charCount">0 / 500 字</span>
+          </div>
+        </div>
+        
+        </div>
+        
+        <!-- 云雾平台内容 -->
+        <div id="createYunwuContent" style="display: none;">
+        <!-- 上传视频 -->
+        <div style="margin-bottom: 16px;">
+          <div class="yunwu-upload-card" onclick="document.getElementById('yunwuVideoInput').click()">
+            <div class="yunwu-upload-icon-wrapper">
+              <span class="yunwu-upload-icon">🎬</span>
+              <span class="yunwu-upload-badge">+</span>
+            </div>
+            <div class="yunwu-upload-title">上传视频</div>
+            <a href="javascript:void(0)" class="yunwu-upload-history" onclick="event.stopPropagation(); showYunwuVideoHistory()">历史创作</a>
+          </div>
+          <input type="file" id="yunwuVideoInput" accept="video/*" style="display: none;" onchange="handleYunwuVideoUpload(event)">
+          <div id="yunwuVideoPreview" style="display: none; margin-top: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border);">
+            <video id="yunwuVideoPreviewElement" controls style="width: 100%; max-height: 300px; border-radius: 8px;"></video>
+            <button class="btn secondary" onclick="removeYunwuVideo()" style="margin-top: 12px;">🗑️ 删除</button>
+          </div>
+        </div>
+        
+        <!-- 上传音频 -->
+        <div style="margin-bottom: 16px;">
+          <div class="yunwu-upload-card" onclick="document.getElementById('yunwuAudioInput').click()">
+            <div class="yunwu-upload-icon-wrapper">
+              <span class="yunwu-upload-icon">🎵</span>
+              <span class="yunwu-upload-badge">+</span>
+            </div>
+            <div class="yunwu-upload-title">上传音频</div>
+            <a href="javascript:void(0)" class="yunwu-upload-history" onclick="event.stopPropagation(); showYunwuAudioHistory()">历史创作</a>
+          </div>
+          <input type="file" id="yunwuAudioInput" accept="audio/*" style="display: none;" onchange="handleYunwuAudioUpload(event)">
+          <div id="yunwuAudioPreview" style="display: none; margin-top: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border);">
+            <audio id="yunwuAudioPreviewElement" controls style="width: 100%;"></audio>
+            <button class="btn secondary" onclick="removeYunwuAudio()" style="margin-top: 12px;">🗑️ 删除</button>
+          </div>
+        </div>
+        
+        <!-- 文本框 -->
+        <div class="script-input-wrap" style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">输入文案</div>
+          <div class="script-textarea-wrapper">
+            <textarea class="script-textarea" id="yunwuScriptInput" placeholder="输入数字人要说的话（可选）..." oninput="updateYunwuCharCount()" style="min-height: 100px;"></textarea>
+            <span class="char-count-inline" id="yunwuCharCount">0 / 500 字</span>
+          </div>
+        </div>
+        
         </div>
       </div>
-    
-    <!-- 步骤1：接入API -->
-    <div class="step-content active" id="step1Content">
-      <div class="step-card">
-        <h3>🔑 接入语音API <span class="step-badge">步骤 1/3</span></h3>
-        
-        <div class="section-title">选择数字人平台</div>
-        <div class="platform-tabs" style="display: flex; margin-bottom: 24px;">
-          <div class="platform-tab active" data-platform="heygen">
-            <span class="icon">🎬</span>
-            <span>HeyGen</span>
-            <span class="tag" style="background: var(--primary);">AI数字人</span>
-          </div>
-          <div class="platform-tab" data-platform="yunwu">
-            <span class="icon">☁️</span>
-            <span>云雾数字人</span>
-            <span class="tag" style="background: var(--primary-light);">国内API</span>
-          </div>
+      
+      <!-- 底部固定栏：左下角 HeyGen=音频格式 / 云雾=生成视频模式，右侧生成按钮 -->
+      <div class="create-bottom-bar" id="createBottomBar">
+        <div class="bottom-bar-left">
+          <select class="bottom-bar-format-select" id="formatSelect" title="音频格式">
+            <option value="wav">WAV</option>
+            <option value="mp3">MP3</option>
+          </select>
+          <select class="bottom-bar-format-select" id="videoModeSelect" title="生成视频模式" style="display: none;">
+            <option value="std">标准模式</option>
+            <option value="pro">专家模式</option>
+          </select>
         </div>
-        
-        <!-- API配置区域 -->
-        <div class="api-config-section" id="apiConfigSection" style="margin-bottom: 32px;">
-          <!-- HeyGen配置 -->
-          <div class="api-config" id="heygenConfig">
-            <h3>🎬 HeyGen AI数字人配置 <span class="badge">需要配置</span></h3>
-            <div class="api-form">
-              <div class="form-group">
-                <label>API Key</label>
-                <input type="password" id="heygenApiKey" placeholder="输入HeyGen API Key">
-              </div>
-            </div>
-            <div class="api-actions">
-              <button class="api-btn primary" onclick="saveHeyGenConfig()">💾 保存配置</button>
-              <button class="api-btn success" onclick="testHeyGenApi()">🧪 测试连接</button>
-            </div>
-            <div id="heygenStatus"></div>
-            <div class="api-help">
-              <strong>📖 获取步骤：</strong><br>
-              1. 访问 <a href="https://www.heygen.com" target="_blank" rel="noopener">HeyGen官网</a> 注册账号<br>
-              2. 进入控制台 → API设置<br>
-              3. 创建 API Key 并复制<br>
-              <br>
-              <strong>✨ 功能特点：</strong><br>
-              • AI驱动的数字人视频生成<br>
-              • 支持多语言语音合成<br>
-              • 高质量视频输出<br>
-              • 丰富的数字人形象库<br>
-              💡 提供免费试用额度
-            </div>
-          </div>
-
-          <!-- 云雾AI 配置（既可用于文案模型，也可用于云雾数字人） -->
-          <div class="api-config hidden" id="yunwuConfig" style="margin-top: 24px;">
-            <h3>☁️ 云雾AI 接入配置 <span class="badge" style="background: #52c41a;">需要配置</span></h3>
-            <div class="api-form">
-              <div class="form-group">
-                <label>云雾 API Key</label>
-                <input type="password" id="yunwuApiKey" placeholder="输入云雾 API Key（用于创建数字人视频）">
-              </div>
-            </div>
-            <div class="api-actions">
-              <button class="api-btn primary" onclick="saveYunwuConfig()">💾 保存配置</button>
-              <button class="api-btn success" onclick="testYunwuApi()">🧪 测试连接</button>
-            </div>
-            <div id="yunwuStatus"></div>
-            
-            <div class="api-help" style="margin-top: 12px;">
-              <strong>📖 获取步骤：</strong><br>
-              1. 访问 <a href="https://yunwu.ai" target="_blank" rel="noopener">云雾AI官网</a> 注册账号<br>
-              2. 登录后进入「令牌管理」页面<br>
-              3. 创建 Token 并复制作为 API Key 使用<br>
-              <br>
-              <strong>✨ 用途说明：</strong><br>
-              • 用于调用「可灵 Kling 数字人」API 生成数字人视频<br>
-              • 支持图片转视频的数字人生成<br>
-              • 适合国内环境下的数字人生成服务
-            </div>
-          </div>
-        </div>
-        
-        <div class="step-actions">
-          <div></div>
-          <button class="step-btn next" onclick="goToStep(2)">下一步：选择形象 →</button>
-        </div>
+        <button class="bottom-bar-generate-btn" id="createBottomBarGenerateBtn" onclick="handleBottomBarGenerate()">生成</button>
       </div>
-    </div>
     
-    <!-- 步骤2：选择形象 -->
-    <div class="step-content" id="step2Content">
+    <!-- 旧步骤内容（已废弃，保留以防引用） -->
+    <div class="step-content" id="step2Content" style="display: none;">
+    <div class="step-content active" id="step2Content">
       <div class="step-card">
         <h3>👤 选择数字人形象 <span class="step-badge">步骤 2/3</span></h3>
         
@@ -217,9 +238,9 @@
             </div>
             <div id="avatarTemplateGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; min-height: 200px; max-height: 600px; overflow-y: auto; padding: 8px;">
               <div id="avatarLoadingState" style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
-                <div style="font-size: 2.5rem; margin-bottom: 12px; animation: pulse 2s infinite;">⏳</div>
-                <div style="font-size: 0.9rem; margin-bottom: 8px;">正在加载模板...</div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请稍候，正在从 HeyGen 平台获取数字人模板</div>
+                <div style="font-size: 2rem; margin-bottom: 12px;">👆</div>
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">点击右上角"刷新模板"按钮加载数字人模板</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请确保已配置并测试 HeyGen API Key</div>
               </div>
             </div>
             
@@ -461,20 +482,6 @@
             </div>
           </div>
           
-          <!-- 隐藏的select用于向后兼容 -->
-          <select class="option-select" id="voiceSelect" style="display: none;">
-            <option value="">🎤 默认语音（自动选择）</option>
-          </select>
-          
-          <div style="background: linear-gradient(135deg, rgba(24, 144, 255, 0.12), rgba(82, 196, 26, 0.08)); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
-            <div style="display: flex; align-items: flex-start; gap: 12px;">
-              <span style="font-size: 1.2rem; flex-shrink: 0;">💡</span>
-              <div>
-                <strong style="color: var(--primary); display: block; margin-bottom: 6px;">语音选择说明</strong>
-                <div>此选项用于选择TTS语音，用于朗读您输入的文案。如果选择模板模式，需要同时选择模板和语音才能进行下一步。如果不选择，系统将根据文案语言自动选择合适语音。</div>
-              </div>
-            </div>
-          </div>
         </div>
         
         <div class="step-actions" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border);">
@@ -573,200 +580,292 @@
       </div>
     </div>
     
-    <!-- 数字人管理内容 -->
-    <div class="content-panel hidden" id="managePanel">
-      <div class="page-title">
-        <h1>👥 数字人管理</h1>
-        <p>管理您创建的所有数字人</p>
-      </div>
-
-      <div class="history-list" id="digitalHumanManageList">
-        <!-- 动态加载 -->
-      </div>
-    </div>
-    
-    <!-- 作品管理内容 -->
-    <div class="content-panel hidden" id="worksPanel">
-      <div class="page-title">
-        <h1>🎬 作品管理</h1>
-        <p>管理所有生成的视频作品</p>
-      </div>
-
-      <div class="task-query-card">
-        <div class="task-query-title">🔎 按任务ID查询（可直接下载到本地）</div>
-        <div class="task-query-row">
-          <select id="taskIdQueryProvider" class="task-query-select" title="选择平台">
-            <option value="yunwu">云雾</option>
-            <option value="heygen">HeyGen</option>
-          </select>
-          <input id="taskIdQueryInput" class="task-query-input" type="text" placeholder="输入任务ID" />
-          <button type="button" class="task-query-btn primary" onclick="startTaskIdQueryPolling()">开始查询</button>
-          <button type="button" class="task-query-btn" onclick="stopTaskIdQueryPolling()">停止</button>
-        </div>
-        <div id="taskIdQueryStatus" class="task-query-status">请输入任务ID并开始查询</div>
-        <div id="taskIdQueryResult" style="margin-top: 12px;"></div>
-      </div>
-      
-      <div class="history-list" id="worksList">
-        <!-- 动态加载 -->
-      </div>
-    </div>
-    
-    <!-- 诵读文案面板 -->
+    <!-- 诵读文案面板（仅云雾） -->
     <div class="content-panel hidden" id="recitePanel">
-      <div class="page-title">
-        <h1>📖 诵读文案</h1>
-        <p>让数字人帮您诵读文案，生成专业视频</p>
+      <!-- 云雾：上传视频 + 上传音频（双卡片，参考创建数字人样式）→ 选择数字人/视频 → 生成 -->
+      <div id="reciteYunwuSection" style="display: block;">
+        <!-- 上传视频 / 上传音频 各占一行 -->
+        <div class="recite-upload-row" style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px;">
+          <!-- 上传视频：选中后预览放在上传框内 -->
+          <div class="yunwu-upload-card-wrapper">
+            <div class="yunwu-upload-card" id="reciteVideoCard">
+              <div class="yunwu-upload-card-default" id="reciteVideoCardDefault" onclick="document.getElementById('reciteVideoInput').click()">
+                <div class="yunwu-upload-icon-wrapper">
+                  <span class="yunwu-upload-icon">🎬</span>
+                  <span class="yunwu-upload-badge">+</span>
+                </div>
+                <div class="yunwu-upload-title">上传视频</div>
+                <a href="javascript:void(0)" class="yunwu-upload-history" onclick="event.stopPropagation(); openReciteSelectDigitalHumanModal()">选择数字人</a>
+              </div>
+              <div id="reciteSelectedVideoInfo" class="yunwu-upload-card-preview" style="display: none;">
+                <div class="yunwu-upload-preview-header">
+                  <div><div class="yunwu-upload-preview-title">已选择视频</div><div id="reciteSelectedVideoName" class="yunwu-upload-preview-name"></div></div>
+                  <button type="button" class="btn secondary" onclick="event.stopPropagation(); clearReciteSelectedVideo()">清除</button>
+                </div>
+                <video id="reciteSelectedVideoPreview" controls class="yunwu-upload-preview-media"></video>
+              </div>
+            </div>
+            <input type="file" id="reciteVideoInput" accept="video/*" style="display: none;" onchange="handleReciteVideoUpload(event)">
+          </div>
+          <!-- 上传音频：选中后预览放在上传框内 -->
+          <div class="yunwu-upload-card-wrapper">
+            <div class="yunwu-upload-card" id="reciteAudioCard">
+              <div class="yunwu-upload-card-default" id="reciteAudioCardDefault" onclick="document.getElementById('reciteUploadAudioInput').click()">
+                <div class="yunwu-upload-icon-wrapper">
+                  <span class="yunwu-upload-icon">🎵</span>
+                  <span class="yunwu-upload-badge">+</span>
+                </div>
+                <div class="yunwu-upload-title">上传音频</div>
+                <a href="javascript:void(0)" class="yunwu-upload-history" onclick="event.stopPropagation(); openReciteTTSModal()">使用TTS合成音频</a>
+              </div>
+              <div id="reciteSelectedAudioInfo" class="yunwu-upload-card-preview" style="display: none;">
+                <div class="yunwu-upload-preview-header">
+                  <div><div class="yunwu-upload-preview-title">已选择音频</div><div id="reciteSelectedAudioName" class="yunwu-upload-preview-name"></div></div>
+                  <button type="button" class="btn secondary" onclick="event.stopPropagation(); clearReciteSelectedAudio()">清除</button>
+                </div>
+                <audio id="reciteSelectedAudioPreview" controls class="yunwu-upload-preview-media"></audio>
+              </div>
+            </div>
+            <input type="file" id="reciteUploadAudioInput" accept="audio/*" style="display: none;" onchange="handleReciteAudioUpload(event)">
+          </div>
+        </div>
+        <!-- 生成视频（对口型）参数：无步骤编号，一步完成 -->
+        <div class="recite-block" style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 10px;">生成视频（对口型）</div>
+          <div style="margin-bottom: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+              <div><label style="display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600;">音频裁剪起点(ms)</label><input type="number" id="reciteSoundStartTime" min="0" value="0" placeholder="0" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 0.9rem;"></div>
+              <div><label style="display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600;">音频裁剪终点(ms)</label><input type="number" id="reciteSoundEndTime" min="2000" value="5000" placeholder="5000" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 0.9rem;"></div>
+            </div>
+            <div style="margin-bottom: 0;"><label style="display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600;">裁剪后音频插入时间(ms)</label><input type="number" id="reciteSoundInsertTime" min="0" value="1000" placeholder="1000" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 0.9rem;"></div>
+          </div>
+        </div>
       </div>
       
-      <div class="step-card" style="max-width: 900px; margin: 0 auto;">
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人（仅限已创建并完成的数字人进行二次创作）</label>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">请先在本站「创建数字人」中完成至少一个 HeyGen 或云雾数字人，此处将列出可选形象。</p>
-          <div id="reciteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-              <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
-              <div style="font-size: 0.85rem;">正在加载已创建的数字人...</div>
+      <!-- 底部固定栏：音频音量/原视频音量改为下拉框滑动按钮 + 生成按钮 -->
+      <div class="create-bottom-bar recite-bottom-bar" id="reciteBottomBar">
+        <div class="recite-bottom-bar-sliders">
+          <div class="recite-bottom-bar-dropdown-slider">
+            <button type="button" class="recite-bottom-bar-slider-btn" id="reciteSoundVolumeBtn" onclick="toggleReciteSliderDropdown('reciteSoundVolume')">
+              <span class="recite-bottom-bar-slider-btn-text">音频音量大小</span>
+              <span id="reciteSoundVolumeValue" class="recite-bottom-bar-slider-value">1</span>
+              <span class="recite-bottom-bar-slider-arrow">▼</span>
+            </button>
+            <div class="recite-bottom-bar-slider-dropdown" id="reciteSoundVolumeDropdown">
+              <input type="range" id="reciteSoundVolume" class="recite-bottom-bar-slider" min="0" max="2" step="0.1" value="1">
             </div>
           </div>
-          <button id="reciteRefreshBtn" class="btn secondary" onclick="loadReciteAvatars()" style="width: 100%;">
-            🔄 刷新列表
-          </button>
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">文案内容 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
-          <textarea id="reciteScript" class="script-input" placeholder="请输入需要诵读的文案内容..." rows="8" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem; line-height: 1.6; resize: vertical;"></textarea>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-            <span style="font-size: 0.85rem; color: var(--text-secondary);">
-              字数：<span id="reciteCharCount">0</span> / 1000
-            </span>
-            <button class="btn secondary" onclick="loadHeyGenVoices('recite')" style="padding: 8px 16px; font-size: 0.85rem;">
-              🔄 获取语音列表
+          <div class="recite-bottom-bar-dropdown-slider">
+            <button type="button" class="recite-bottom-bar-slider-btn" id="reciteOriginalAudioVolumeBtn" onclick="toggleReciteSliderDropdown('reciteOriginalAudioVolume')">
+              <span class="recite-bottom-bar-slider-btn-text">原始视频音量大小</span>
+              <span id="reciteOriginalAudioVolumeValue" class="recite-bottom-bar-slider-value">1</span>
+              <span class="recite-bottom-bar-slider-arrow">▼</span>
             </button>
+            <div class="recite-bottom-bar-slider-dropdown" id="reciteOriginalAudioVolumeDropdown">
+              <input type="range" id="reciteOriginalAudioVolume" class="recite-bottom-bar-slider" min="0" max="2" step="0.1" value="1">
+            </div>
           </div>
         </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择语音</label>
-          <select id="reciteVoiceSelect" class="option-select" style="width: 100%;">
-            <option value="">默认语音（自动选择）</option>
-          </select>
-        </div>
-        
-        <div id="reciteYunwuAudioWrap" style="display: none; margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid var(--border);">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">诵读音频 <span style="color: var(--text-secondary); font-weight: normal;">（二选一：上传或使用原视频中的声音）</span></label>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">云雾 API 需要与文案对应的音频。若该数字人由本站视频创建，可直接使用其原视频中的声音。</p>
-          <div id="reciteUseVideoSoundRow" style="display: none; margin-bottom: 12px;">
-            <button type="button" class="btn secondary" id="reciteUseVideoSoundBtn" onclick="useReciteVideoSound()" style="width: 100%;">🎬 使用该数字人原视频中的声音</button>
-            <p id="reciteVideoSoundStatus" style="font-size: 0.85rem; color: var(--primary); margin-top: 6px; display: none;">✓ 已使用原视频中的声音</p>
-          </div>
-          <div style="margin-bottom: 8px;">或上传音频：</div>
-          <input type="file" id="reciteYunwuAudioInput" accept="audio/*" onchange="handleReciteYunwuAudio(event)" style="width: 100%; padding: 8px;">
-        </div>
-        
-        <div style="display: flex; gap: 12px;">
-          <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createReciteVideo()">
-            🚀 生成诵读视频
-          </button>
-          <button class="btn secondary" style="padding: 16px;" onclick="previewReciteScript()">
-            🔊 预览语音
-          </button>
-        </div>
-      </div>
-      
-      <div style="margin-top: 40px; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-        <p style="margin-bottom: 12px; color: var(--text-secondary);">本功能生成的作品将统一存放在「作品管理」中，可在此查看进度、播放与下载。</p>
-        <button class="btn primary" onclick="switchMenu('works')">前往作品管理</button>
+        <button class="bottom-bar-generate-btn" id="reciteBottomBarGenerateBtn" onclick="handleReciteBottomBarGenerate()">生成</button>
       </div>
     </div>
     
-    <!-- 卖货推送面板 -->
+    <!-- 卖货推送面板（仅云雾） -->
     <div class="content-panel hidden" id="promotePanel">
-      <div class="page-title">
-        <h1>🛒 卖货推送</h1>
-        <p>创建商品推广视频，数字人帮您带货</p>
+      <!-- 云雾：多图参考生视频 -->
+      <div id="promoteYunwuSection" style="display: block;">
+        <div style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">人物图片 <span style="color: var(--primary); font-weight: normal;">(必填，1张)</span></div>
+          <div id="promotePersonImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 12px;"></div>
+          <button type="button" class="btn secondary" onclick="addPromotePersonImage()" id="promoteAddPersonImageBtn" style="width: 100%; padding: 12px;">➕ 上传人物图片</button>
+          <input type="file" id="promotePersonImageInput" accept="image/*" style="display: none;" onchange="handlePromotePersonImageUpload(event)">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">物品图片 <span style="color: var(--text-secondary); font-weight: normal;">(可选，最多3张)</span></div>
+          <div id="promoteProductImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 12px;"></div>
+          <button type="button" class="btn secondary" onclick="addPromoteProductImage()" id="promoteAddProductImageBtn" style="width: 100%; padding: 12px;">➕ 添加物品图片</button>
+          <input type="file" id="promoteProductImageInput" accept="image/*" multiple style="display: none;" onchange="handlePromoteProductImageUpload(event)">
+        </div>
+        <div class="script-input-wrap" style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">正向提示词 <span style="color: var(--primary); font-weight: normal;">(必填)</span></div>
+          <div class="script-textarea-wrapper">
+            <textarea id="promotePrompt" class="script-textarea" placeholder="描述视频内容，不能超过2500字符..." rows="4" maxlength="2500" oninput="updatePromotePromptCount()" style="min-height: 80px;"></textarea>
+            <span class="char-count-inline"><span id="promotePromptCount">0</span> / 2500 字</span>
+          </div>
+        </div>
+        <div class="script-input-wrap" style="margin-bottom: 16px;">
+          <div class="section-title" style="margin-bottom: 8px;">负向提示词 <span style="color: var(--text-secondary); font-weight: normal;">(可选)</span></div>
+          <textarea id="promoteNegativePrompt" class="script-textarea" placeholder="不想要的元素..." rows="3" maxlength="2500" style="min-height: 60px; padding: 10px 12px 28px 12px; width: 100%; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; resize: vertical;"></textarea>
+        </div>
       </div>
       
-      <div class="step-card" style="max-width: 900px; margin: 0 auto;">
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人（仅限已创建并完成的数字人进行二次创作）</label>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">请先在本站「创建数字人」中完成至少一个 HeyGen 或云雾数字人，此处将列出可选形象。</p>
-          <div id="promoteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-              <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
-              <div style="font-size: 0.85rem;">正在加载已创建的数字人...</div>
-            </div>
-          </div>
-          <button id="promoteRefreshBtn" class="btn secondary" onclick="loadPromoteAvatars()" style="width: 100%;">
-            🔄 刷新列表
-          </button>
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">商品名称 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
-          <input type="text" id="promoteProductName" class="script-input" placeholder="请输入商品名称..." style="width: 100%; padding: 12px 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem;">
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">商品描述 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
-          <textarea id="promoteProductDesc" class="script-input" placeholder="请输入商品描述和卖点..." rows="6" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem; line-height: 1.6; resize: vertical;"></textarea>
-          <div style="margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">
-            字数：<span id="promoteCharCount">0</span> / 500
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">上传商品图片 <span style="color: var(--text-secondary); font-weight: normal;">(可选)</span></label>
-          <div class="upload-area" id="promoteImageUploadArea" ondrop="handleProductImageDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="min-height: 150px;">
-            <input type="file" id="promoteImageInput" accept="image/*" style="display: none;" onchange="handleProductImageUpload(this, 'promote')">
-            <div class="upload-icon-large">🖼️</div>
-            <div class="upload-text-large">点击或拖拽商品图片到此处</div>
-            <div class="upload-hint">支持 JPG、PNG、WebP 格式</div>
-            <button class="btn secondary" style="margin-top: 20px;" onclick="document.getElementById('promoteImageInput').click()">选择图片</button>
-          </div>
-          <div id="promoteImagePreview" style="display: none; margin-top: 16px;">
-            <div style="background: var(--bg-secondary); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
-              <img id="promoteImagePreviewImg" src="" style="max-width: 100%; max-height: 300px; border-radius: 8px; margin-bottom: 12px;">
-              <button class="btn secondary" onclick="removeProductImage('promote')" style="width: 100%;">🗑️ 删除图片</button>
-            </div>
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择语音</label>
-          <select id="promoteVoiceSelect" class="option-select" style="width: 100%;">
-            <option value="">默认语音（自动选择）</option>
+      <!-- 底部固定栏：三个下拉框按钮（生成参数）+ 生成按钮 -->
+      <div class="create-bottom-bar promote-bottom-bar" id="promoteBottomBar">
+        <div class="promote-bottom-bar-params">
+          <select id="promoteMode" class="promote-bottom-bar-select" title="生成模式">
+            <option value="std">std（标准）</option>
+            <option value="pro">pro（专家）</option>
+          </select>
+          <select id="promoteDuration" class="promote-bottom-bar-select" title="视频时长">
+            <option value="5">5秒</option>
+            <option value="10">10秒</option>
+          </select>
+          <select id="promoteAspectRatio" class="promote-bottom-bar-select" title="画面纵横比">
+            <option value="">默认</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+            <option value="4:3">4:3</option>
+            <option value="3:4">3:4</option>
           </select>
         </div>
-        
-        <div id="promoteYunwuAudioWrap" style="display: none; margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid var(--border);">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">推广音频 <span style="color: var(--text-secondary); font-weight: normal;">（二选一：上传或使用原视频中的声音）</span></label>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">云雾 API 需要与推广文案对应的音频。若该数字人由本站视频创建，可直接使用其原视频中的声音。</p>
-          <div id="promoteUseVideoSoundRow" style="display: none; margin-bottom: 12px;">
-            <button type="button" class="btn secondary" id="promoteUseVideoSoundBtn" onclick="usePromoteVideoSound()" style="width: 100%;">🎬 使用该数字人原视频中的声音</button>
-            <p id="promoteVideoSoundStatus" style="font-size: 0.85rem; color: var(--primary); margin-top: 6px; display: none;">✓ 已使用原视频中的声音</p>
-          </div>
-          <div style="margin-bottom: 8px;">或上传音频：</div>
-          <input type="file" id="promoteYunwuAudioInput" accept="audio/*" onchange="handlePromoteYunwuAudio(event)" style="width: 100%; padding: 8px;">
-        </div>
-        
-        <div style="display: flex; gap: 12px;">
-          <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createPromoteVideo()">
-            🚀 生成推广视频
-          </button>
-          <button class="btn secondary" onclick="loadHeyGenVoices('promote')" style="padding: 16px;">
-            🔄 获取语音
-          </button>
-        </div>
-      </div>
-      
-      <div style="margin-top: 40px; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-        <p style="margin-bottom: 12px; color: var(--text-secondary);">本功能生成的作品将统一存放在「作品管理」中，可在此查看进度、播放与下载。</p>
-        <button class="btn primary" onclick="switchMenu('works')">前往作品管理</button>
+        <button class="bottom-bar-generate-btn" id="promoteBottomBarGenerateBtn" onclick="handlePromoteBottomBarGenerate()">生成</button>
       </div>
     </div>
   </main>
+
+  <!-- 右侧：作品管理（数字人 + 作品合并，参考AI创作工坊） -->
+  <aside class="studio-works-panel" id="studioWorksPanel">
+    <div class="studio-works-panel-inner">
+      <div class="works-container">
+        <div class="works-header">
+          <h2 class="panel-title">🎬 作品管理</h2>
+          <div class="works-header-right">
+            <button type="button" class="works-favorite-btn" id="dhWorksShowFavorites" title="查看收藏">☆ 收藏</button>
+            <div class="works-view-toggle">
+              <button type="button" class="works-view-btn active" id="dhWorksViewList" data-view="list" title="列表视图">列表</button>
+              <button type="button" class="works-view-btn" id="dhWorksViewGrid" data-view="tile" title="平铺视图">平铺</button>
+            </div>
+          </div>
+        </div>
+        <div class="works-filter-row">
+          <button type="button" class="works-filter-btn active" data-filter="" id="dhWorksFilterAll">全部</button>
+          <button type="button" class="works-filter-btn" data-filter="digital" id="dhWorksFilterDigital">数字人</button>
+          <button type="button" class="works-filter-btn" data-filter="works" id="dhWorksFilterWorks">作品</button>
+        </div>
+        <div id="digitalHumanManageList" class="history-list" style="margin-bottom: 24px;"></div>
+        <div class="works-grid" id="worksList"></div>
+        <div class="works-empty" id="worksEmpty" style="display: none; text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+          <div style="font-size: 2.5rem; margin-bottom: 16px;">📁</div>
+          <div style="font-size: 1rem;">暂无数字人/作品</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  </div>
+
+  <!-- 诵读文案：选择数字人弹窗（内容固定在此，不再移入主流程） -->
+  <div class="settings-modal-overlay" id="reciteSelectDigitalHumanModal">
+    <div class="settings-modal-content" style="max-width: 640px;">
+      <div class="settings-modal-header">
+        <h3 class="settings-modal-title">选择数字人</h3>
+        <button type="button" class="settings-modal-close" onclick="closeReciteSelectDigitalHumanModal()">×</button>
+      </div>
+      <div id="reciteSelectDigitalHumanModalBody" class="settings-modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span class="section-title" style="margin: 0;">已创建的数字人</span>
+          <button id="reciteRefreshBtn" class="btn secondary" onclick="loadReciteAvatars()" style="padding: 6px 12px; font-size: 0.85rem;" title="刷新数字人列表">🔄</button>
+        </div>
+        <div id="reciteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          <div style="text-align: center; color: var(--text-secondary); padding: 16px; grid-column: 1 / -1;"><span style="font-size: 1.5rem;">⏳</span><div style="font-size: 0.85rem; margin-top: 8px;">正在加载已创建的数字人...</div></div>
+        </div>
+        <div style="margin-bottom: 0;">
+          <div class="section-title" style="margin-bottom: 6px;">数字人视频 <span style="color: var(--text-secondary); font-weight: normal;">(或从上传视频获取)</span></div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="text" id="reciteVideoIdInput" placeholder="输入视频ID" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;">
+            <input type="text" id="reciteVideoUrlInput" placeholder="或输入视频URL" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 诵读文案：使用 TTS 合成音频弹窗 -->
+  <div class="settings-modal-overlay" id="reciteTTSModal">
+    <div class="settings-modal-content" style="max-width: 560px;">
+      <div class="settings-modal-header">
+        <h3 class="settings-modal-title">使用 TTS 合成音频</h3>
+        <button type="button" class="settings-modal-close" onclick="closeReciteTTSModal()">×</button>
+      </div>
+      <div class="settings-modal-body">
+        <div id="reciteSynthesizeAudioMode">
+          <div class="script-input-wrap" style="margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 8px;">文案内容 <span style="color: var(--primary); font-weight: normal;">(必填)</span></div>
+            <div class="script-textarea-wrapper">
+              <textarea id="reciteScriptYunwu" class="script-textarea" placeholder="请输入需要诵读的文案内容..." rows="4" oninput="updateReciteCharCountYunwu()" style="min-height: 80px;"></textarea>
+              <span class="char-count-inline"><span id="reciteCharCountYunwu">0</span> / 1000 字</span>
+            </div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 6px;">音色选择 <span style="color: var(--primary); font-weight: normal;">(必填)</span></div>
+            <div style="display: flex; gap: 8px;">
+              <select id="reciteYunwuVoiceSelect" class="option-select" style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;"><option value="">加载中...</option></select>
+              <button id="reciteVoicePreviewBtn" class="btn secondary" onclick="previewReciteVoice()" style="padding: 10px 16px; white-space: nowrap;">🔊 试听</button>
+            </div>
+            <div id="reciteVoicePreviewHint" style="display: none; font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;"></div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 6px;">音色语种</div>
+            <select id="reciteYunwuVoiceLanguage" class="option-select" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;">
+              <option value="zh">zh（中文）</option><option value="en">en（英文）</option><option value="ja">ja（日文）</option><option value="ko">ko（韩文）</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 6px;">语速 <span style="color: var(--text-secondary); font-weight: normal;">(可选)</span></div>
+            <input type="number" id="reciteYunwuVoiceSpeed" min="0.5" max="2" step="0.1" value="1.0" placeholder="1.0" style="width: 100px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;">
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 6px;">音频ID <span style="color: var(--text-secondary); font-weight: normal;">(可选)</span></div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="reciteAudioIdInput" placeholder="输入音频ID或下方生成获取" style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem;">
+              <button id="reciteUseAudioIdBtn" class="btn secondary" onclick="reciteUseAudioId()" style="padding: 10px 16px; white-space: nowrap;">✅ 使用此ID</button>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <button id="reciteGenerateAudioBtn" class="btn primary" onclick="reciteGenerateAudio()" style="padding: 12px 20px;">🎤 生成音频</button>
+            <div id="reciteGeneratedAudioIdDisplay" style="flex: 1; min-width: 120px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border); display: none;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">音频ID</div>
+              <div id="reciteGeneratedAudioIdText" style="font-weight: 600; color: var(--primary); font-size: 0.9rem; word-break: break-all;"></div>
+            </div>
+            <button id="reciteUseGeneratedAudioBtn" class="btn secondary" onclick="reciteUseGeneratedAudio()" style="padding: 12px 16px; display: none;">✅ 使用此音频</button>
+          </div>
+          <div id="reciteGeneratedAudioInfo" style="display: none; margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">生成的音频（可试听）</div>
+            <audio id="reciteGeneratedAudioPreview" controls style="width: 100%;"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 设置弹窗（API Key 等配置已移至右上角设置，与 AI 创作工坊一致） -->
+  <div class="settings-modal-overlay" id="dhSettingsModal">
+    <div class="settings-modal-content">
+      <div class="settings-modal-header">
+        <h3 class="settings-modal-title">设置</h3>
+        <button class="settings-modal-close" id="dhSettingsModalClose">×</button>
+      </div>
+      <div class="settings-modal-body">
+        <p class="settings-modal-desc">数字人功能使用的 API Key 由管理员在后台分配，用户无需在此配置。请先登录后使用。</p>
+        <div class="dh-settings-section">
+          <h4>🎬 HeyGen</h4>
+          <p class="form-hint">由管理员在「API Key 配置」中为当前用户分配 HeyGen Key 后即可使用。</p>
+          <div class="dh-settings-actions">
+            <button type="button" class="btn secondary" onclick="testHeyGenApi()">测试连接</button>
+          </div>
+          <div id="heygenStatus"></div>
+        </div>
+        <div class="dh-settings-section">
+          <h4>☁️ 云雾数字人</h4>
+          <p class="form-hint">由管理员在「API Key 配置」中为当前用户分配云雾 Key 后即可使用。</p>
+          <div class="dh-settings-actions">
+            <button type="button" class="btn secondary" onclick="testYunwuApi()">测试连接</button>
+          </div>
+          <div id="yunwuStatus"></div>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <!-- 加载动画 -->
   <div class="loading-overlay hidden" id="loadingOverlay">
@@ -774,6 +873,15 @@
     <div class="loading-text" id="loadingText">正在生成语音...</div>
   </div>
   
+  <script src="./modules/core.js"></script>
+  <script src="./modules/config.js"></script>
+  <script src="./modules/nav.js"></script>
+  <script src="./modules/state.js"></script>
+  <script src="./modules/voices.js"></script>
+  <script src="./modules/works.js"></script>
+  <script src="./modules/create.js"></script>
+  <script src="./modules/recite.js"></script>
   <script src="./digital-human-cn.js"></script>
+  <script src="./modules/main.js"></script>
 </body>
 </html>

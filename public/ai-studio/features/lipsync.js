@@ -7,56 +7,113 @@
   var name = '对口型';
   var icon = '👄';
 
+  // 当前设置
+  var currentSettings = {
+    soundStartTime: 0,
+    soundEndTime: 5000,
+    soundInsertTime: 1000,
+    soundVolume: 1.0,
+    originalAudioVolume: 1.0,
+    videoInputMode: 'url', // 'url' 或 'id'
+    audioInputMode: 'url' // 'url' 或 'id'
+  };
+
   function getPanel() {
     return [
-      '<h2 class="panel-title">对口型 · 可灵 Kling 高级对口型</h2>',
-      '<div class="form-row">',
-      '  <label>视频 <span class="required">*</span></label>',
-      '  <div class="t2i-image-input-wrap">',
-      '    <input type="text" id="lip-video" placeholder="输入视频 URL 或视频ID，或上传本地视频">',
-      '    <input type="file" id="lip-video-file" accept="video/mp4,video/mov" style="display:none;">',
-      '    <button type="button" class="btn-secondary" id="lip-upload-video-btn" style="margin-left:8px;margin-top:0;">上传视频</button>',
+      '<div class="t2i-container">',
+      '  <div class="t2i-header-bar">',
+      '    <div class="t2i-header-title">对口型</div>',
+      '    <button type="button" class="t2i-header-model-btn" id="lip-header-model-btn">',
+      '      <span class="t2i-model-text" id="lip-model-text">默认模型</span>',
+      '      <span class="t2i-dropdown-arrow">▼</span>',
+      '    </button>',
       '  </div>',
-      '  <p class="hint">支持视频 URL 或可灵返回的「视频资源 ID」。人脸识别需用视频资源 ID 或 URL，勿填任务 ID（task_id）；若只有任务 ID，请先在作品管理中打开该任务，使用完成后返回的「视频链接」。</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>音频 <span class="required">*</span></label>',
-      '  <div class="t2i-image-input-wrap">',
-      '    <input type="text" id="lip-audio" placeholder="输入音频 URL、音频ID 或 Base64 编码，或上传本地音频">',
-      '    <input type="file" id="lip-audio-file" accept="audio/mp3,audio/wav,audio/m4a,audio/aac" style="display:none;">',
-      '    <button type="button" class="btn-secondary" id="lip-upload-audio-btn" style="margin-left:8px;margin-top:0;">上传音频</button>',
+      '  <div class="t2i-input-area">',
+      '    <div class="t2i-input-box">',
+      '      <!-- 视频上传卡片 -->',
+      '      <div class="lip-upload-card" id="lip-video-card">',
+      '        <div class="lip-upload-card-content">',
+      '          <div class="lip-upload-icon">',
+      '            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">',
+      '              <path d="M23 7l-7 5 7 5V7z"></path>',
+      '              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>',
+      '            </svg>',
+      '            <span class="lip-upload-plus">+</span>',
+      '          </div>',
+      '          <div class="lip-upload-main-text">上传视频</div>',
+      '          <div class="lip-upload-sub-text" id="lip-video-history-text">历史创作</div>',
+      '        </div>',
+      '        <div class="lip-upload-preview" id="lip-video-preview" style="display:none;"></div>',
+      '      </div>',
+      '      <input type="file" id="lip-video-file" accept="video/mp4,video/mov" style="display:none;">',
+      '      <input type="text" id="lip-video-input" class="t2i-prompt-input lip-input-hidden" placeholder="输入视频 URL 或视频ID（仅支持时长不短于2秒且不长于60秒的视频）" style="display:none;">',
+      '      <!-- 音频上传卡片 -->',
+      '      <div class="lip-upload-card" id="lip-audio-card">',
+      '        <div class="lip-upload-card-content">',
+      '          <div class="lip-upload-icon">',
+      '            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">',
+      '              <path d="M9 18V5l12-2v13"></path>',
+      '              <circle cx="6" cy="18" r="3"></circle>',
+      '              <circle cx="18" cy="16" r="3"></circle>',
+      '            </svg>',
+      '            <span class="lip-upload-plus">+</span>',
+      '          </div>',
+      '          <div class="lip-upload-main-text">上传音频</div>',
+      '          <div class="lip-upload-sub-text" id="lip-audio-history-text">历史创作</div>',
+      '        </div>',
+      '        <div class="lip-upload-preview" id="lip-audio-preview" style="display:none;"></div>',
+      '      </div>',
+      '      <input type="file" id="lip-audio-file" accept="audio/mp3,audio/wav,audio/m4a,audio/aac" style="display:none;">',
+      '      <input type="text" id="lip-audio-input" class="t2i-prompt-input lip-input-hidden" placeholder="输入音频 URL、音频ID 或 Base64 编码（仅支持时长不短于2秒且不长于60秒的音频）" style="display:none;">',
+      '      <div class="lip-time-group">',
+      '        <div class="lip-time-row lip-time-row-two">',
+      '          <div class="lip-time-field">',
+      '            <label class="lip-time-label">音频裁剪起点(ms)</label>',
+      '            <input type="number" id="lip-sound-start-time" class="lip-time-input" min="0" value="0" placeholder="0">',
+      '          </div>',
+      '          <div class="lip-time-field">',
+      '            <label class="lip-time-label">音频裁剪终点(ms)</label>',
+      '            <input type="number" id="lip-sound-end-time" class="lip-time-input" min="0" value="5000" placeholder="5000">',
+      '          </div>',
+      '        </div>',
+      '        <div class="lip-time-row lip-time-row-full">',
+      '          <div class="lip-time-field">',
+      '            <label class="lip-time-label">裁剪后音频插入时间(ms)</label>',
+      '            <input type="number" id="lip-sound-insert-time" class="lip-time-input" min="0" value="1000" placeholder="1000">',
+      '          </div>',
+      '        </div>',
+      '      </div>',
+      '      <div class="t2i-input-footer">',
+      '        <div class="t2i-input-left">',
+      '          <div class="lip-volume-controls" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">',
+      '            <button type="button" class="lip-volume-btn" id="lip-sound-volume-btn">',
+      '              <span>音频音量大小</span>',
+      '              <span id="lip-sound-volume-value">1.0</span>',
+      '              <span class="t2i-dropdown-arrow">▼</span>',
+      '            </button>',
+      '            <div class="lip-volume-dropdown" id="lip-sound-volume-dropdown" style="display:none;">',
+      '              <div class="lip-volume-dropdown-content">',
+      '                <input type="range" id="lip-sound-volume" min="0" max="2" step="0.1" value="1" style="width:100%;">',
+      '              </div>',
+      '            </div>',
+      '            <button type="button" class="lip-volume-btn" id="lip-original-audio-volume-btn">',
+      '              <span>原始视频音量大小</span>',
+      '              <span id="lip-original-audio-volume-value">1.0</span>',
+      '              <span class="t2i-dropdown-arrow">▼</span>',
+      '            </button>',
+      '            <div class="lip-volume-dropdown" id="lip-original-audio-volume-dropdown" style="display:none;">',
+      '              <div class="lip-volume-dropdown-content">',
+      '                <input type="range" id="lip-original-audio-volume" min="0" max="2" step="0.1" value="1" style="width:100%;">',
+      '              </div>',
+      '            </div>',
+      '          </div>',
+      '        </div>',
+      '        <button type="button" class="t2i-generate-btn" id="lip-submit">生成</button>',
+      '      </div>',
+      '    </div>',
       '  </div>',
-      '  <p class="hint">支持输入音频 URL（优先）、音频ID 或 Base64 编码（备选），或上传本地音频（.mp3/.wav/.m4a/.aac，≤5MB，2~60秒）</p>',
       '</div>',
-      '<div class="form-row">',
-      '  <label>音频裁剪起点时间（ms）</label>',
-      '  <input type="number" id="lip-sound-start-time" min="0" value="0" placeholder="0">',
-      '  <p class="hint">以原始音频开始时间为准，开始时间为0分0秒，单位ms</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>音频裁剪终点时间（ms）</label>',
-      '  <input type="number" id="lip-sound-end-time" min="0" value="5000" placeholder="5000">',
-      '  <p class="hint">终点时间不得晚于原始音频总时长</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>裁剪后音频插入时间（ms）</label>',
-      '  <input type="number" id="lip-sound-insert-time" min="0" value="1000" placeholder="1000">',
-      '  <p class="hint">插入音频的时间范围与该人脸可对口型时间区间至少重合2秒时长</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>音频音量大小</label>',
-      '  <input type="number" id="lip-sound-volume" min="0" max="2" step="0.1" value="1" placeholder="1">',
-      '  <p class="hint">值越大，音量越大，取值范围：[0, 2]</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>原始视频音量大小</label>',
-      '  <input type="number" id="lip-original-audio-volume" min="0" max="2" step="0.1" value="1" placeholder="1">',
-      '  <p class="hint">值越大，音量越大，取值范围：[0, 2]；原视频无声时，当前参数无效果</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <button type="button" class="btn-primary" id="lip-submit">生成对口型视频</button>',
-      '</div>',
-      '<div class="result-area" id="lip-result">生成结果将显示在此处</div>'
+      '<div class="t2i-settings-dropdown" id="lip-settings-dropdown" style="display:none;"></div>'
     ].join('\n');
   }
 
@@ -188,33 +245,27 @@
         reject(new Error('音频文件过大，请选择 ≤5MB 的音频'));
         return;
       }
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var base64 = e.target.result;
-        var isDataUrl = base64.startsWith('data:');
-        var raw = isDataUrl ? base64.substring(base64.indexOf(',') + 1) : base64;
-        fetch(apiOrigin() + '/api/upload-temp-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'audio', content: raw }),
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (data && data.success && data.url) {
-              var url = data.url;
-              var isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(url);
-              if (isLocalhost) {
-                setResult('<span class="msg-warning">⚠️ 检测到本地地址（' + url + '），云雾 API 可能无法访问。请配置 DEPLOY_URL 环境变量以使用公网地址。</span>', true);
-              }
-              resolve(url);
-            } else {
-              reject(new Error(data && data.message ? data.message : '上传失败'));
+      var formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'audio');
+      fetch(apiOrigin() + '/api/upload-temp-asset', {
+        method: 'POST',
+        body: formData,
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.success && data.url) {
+            var url = data.url;
+            var isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(url);
+            if (isLocalhost) {
+              // 本地地址警告可以忽略，因为服务器会处理
             }
-          })
-          .catch(reject);
-      };
-      reader.onerror = function () { reject(new Error('读取文件失败')); };
-      reader.readAsDataURL(file);
+            resolve(url);
+          } else {
+            reject(new Error(data && data.message ? data.message : '上传失败'));
+          }
+        })
+        .catch(reject);
     });
   }
 
@@ -249,9 +300,10 @@
       return;
     }
     var url = apiOrigin() + '/api/yunwu/videos/advanced-lip-sync/' + encodeURIComponent(taskId);
+    var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
     fetch(url, {
       method: 'GET',
-      headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -290,6 +342,19 @@
           '';
         
         if (status === 'done' && videos.length > 0) {
+          // 任务完成且有资源，立即更新作品状态
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            var updates = {
+              status: 'ready',
+              videos: videos,
+              resultUrl: videos[0],
+              videoId: videoId,
+              progress: 100,
+              progressStatus: '已完成'
+            };
+            window.MediaStudio.updateWork(workId, updates);
+            if (window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+          }
           resolve({ videos: videos, raw: data, videoId: videoId });
           return;
         }
@@ -337,74 +402,728 @@
 
   var currentSessionId = '';
   var currentFaceId = '';
+  
+  // 聊天消息管理
 
   function init(container) {
     if (!container) return;
+    
     var btn = document.getElementById('lip-submit');
     if (!btn) return;
-
-    var videoInput = document.getElementById('lip-video');
+    
+    // 初始化模型按钮（仅显示，不实现下拉功能）
+    var modelBtn = document.getElementById('lip-header-model-btn');
+    var modelText = document.getElementById('lip-model-text');
+    if (modelText) {
+      modelText.textContent = '对口型模型';
+    }
+    if (modelBtn) {
+      // 可以添加点击事件，但目前仅显示
+      modelBtn.style.cursor = 'default';
+    }
+    
+    var videoInput = document.getElementById('lip-video-input');
     var videoFileInput = document.getElementById('lip-video-file');
-    var uploadVideoBtn = document.getElementById('lip-upload-video-btn');
     var currentVideoUrl = '';
     var currentVideoId = '';
+    var currentVideoFile = null;
+    var currentVideoDuration = 0; // 视频时长（秒）
 
-    var audioInput = document.getElementById('lip-audio');
+    var audioInput = document.getElementById('lip-audio-input');
     var audioFileInput = document.getElementById('lip-audio-file');
-    var uploadAudioBtn = document.getElementById('lip-upload-audio-btn');
     var currentAudioUrl = '';
     var currentAudioBase64 = '';
     var currentAudioId = '';
     var currentAudioFile = null;
+    var currentAudioDuration = 0; // 音频时长（秒）
+    
+    // 获取视频时长
+    function getVideoDuration(file) {
+      return new Promise(function(resolve, reject) {
+        var video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = function() {
+          window.URL.revokeObjectURL(video.src);
+          resolve(video.duration);
+        };
+        video.onerror = function() {
+          window.URL.revokeObjectURL(video.src);
+          reject(new Error('无法读取视频时长'));
+        };
+        video.src = URL.createObjectURL(file);
+      });
+    }
+    
+    // 获取音频时长
+    function getAudioDuration(file) {
+      return new Promise(function(resolve, reject) {
+        var audio = document.createElement('audio');
+        audio.preload = 'metadata';
+        audio.onloadedmetadata = function() {
+          window.URL.revokeObjectURL(audio.src);
+          resolve(audio.duration);
+        };
+        audio.onerror = function() {
+          window.URL.revokeObjectURL(audio.src);
+          reject(new Error('无法读取音频时长'));
+        };
+        audio.src = URL.createObjectURL(file);
+      });
+    }
+    
+    // 格式化时长显示（秒转为 mm:ss 或 hh:mm:ss）
+    function formatDuration(seconds) {
+      if (!seconds || isNaN(seconds)) return '未知';
+      var hours = Math.floor(seconds / 3600);
+      var minutes = Math.floor((seconds % 3600) / 60);
+      var secs = Math.floor(seconds % 60);
+      if (hours > 0) {
+        return hours + ':' + (minutes < 10 ? '0' : '') + minutes + ':' + (secs < 10 ? '0' : '') + secs;
+      }
+      return minutes + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+    
+    
+    // 绑定输入框中的设置项事件
+    function bindSettingsInputs() {
+      var startTimeInput = document.getElementById('lip-sound-start-time');
+      var endTimeInput = document.getElementById('lip-sound-end-time');
+      var insertTimeInput = document.getElementById('lip-sound-insert-time');
+      
+      if (startTimeInput) {
+        startTimeInput.addEventListener('input', function() {
+          currentSettings.soundStartTime = parseInt(this.value, 10) || 0;
+        });
+      }
+      if (endTimeInput) {
+        endTimeInput.addEventListener('input', function() {
+          currentSettings.soundEndTime = parseInt(this.value, 10) || 5000;
+        });
+      }
+      if (insertTimeInput) {
+        insertTimeInput.addEventListener('input', function() {
+          currentSettings.soundInsertTime = parseInt(this.value, 10) || 1000;
+        });
+      }
+    }
+    
+    // 音量控制按钮和下拉框
+    var soundVolumeBtn = document.getElementById('lip-sound-volume-btn');
+    var soundVolumeDropdown = document.getElementById('lip-sound-volume-dropdown');
+    var soundVolumeInput = document.getElementById('lip-sound-volume');
+    var soundVolumeValue = document.getElementById('lip-sound-volume-value');
+    
+    var originalVolumeBtn = document.getElementById('lip-original-audio-volume-btn');
+    var originalVolumeDropdown = document.getElementById('lip-original-audio-volume-dropdown');
+    var originalVolumeInput = document.getElementById('lip-original-audio-volume');
+    var originalVolumeValue = document.getElementById('lip-original-audio-volume-value');
+    
+    // 关闭所有下拉框的通用函数
+    function closeAllDropdowns(excludeDropdown) {
+      if (soundVolumeDropdown && soundVolumeDropdown !== excludeDropdown) {
+        soundVolumeDropdown.style.display = 'none';
+      }
+      if (originalVolumeDropdown && originalVolumeDropdown !== excludeDropdown) {
+        originalVolumeDropdown.style.display = 'none';
+      }
+    }
+    
+    // 音频音量按钮点击事件
+    if (soundVolumeBtn && soundVolumeDropdown) {
+      soundVolumeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var rect = soundVolumeBtn.getBoundingClientRect();
+        var computedDisplay = window.getComputedStyle(soundVolumeDropdown).display;
+        var isVisible = computedDisplay === 'block';
+        
+        // 关闭其他所有下拉框
+        closeAllDropdowns(soundVolumeDropdown);
+        
+        if (isVisible) {
+          soundVolumeDropdown.style.display = 'none';
+        } else {
+          soundVolumeDropdown.style.display = 'block';
+          soundVolumeDropdown.style.visibility = 'hidden';
+          var dropdownHeight = soundVolumeDropdown.offsetHeight || 60;
+          soundVolumeDropdown.style.visibility = 'visible';
+          
+          soundVolumeDropdown.style.left = rect.left + 'px';
+          var topPosition = rect.top - dropdownHeight - 4;
+          if (topPosition < 0) {
+            soundVolumeDropdown.style.top = (rect.bottom + 4) + 'px';
+          } else {
+            soundVolumeDropdown.style.top = topPosition + 'px';
+          }
+        }
+      });
+    }
+    
+    // 原始视频音量按钮点击事件
+    if (originalVolumeBtn && originalVolumeDropdown) {
+      originalVolumeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var rect = originalVolumeBtn.getBoundingClientRect();
+        var computedDisplay = window.getComputedStyle(originalVolumeDropdown).display;
+        var isVisible = computedDisplay === 'block';
+        
+        // 关闭其他所有下拉框
+        closeAllDropdowns(originalVolumeDropdown);
+        
+        if (isVisible) {
+          originalVolumeDropdown.style.display = 'none';
+        } else {
+          originalVolumeDropdown.style.display = 'block';
+          originalVolumeDropdown.style.visibility = 'hidden';
+          var dropdownHeight = originalVolumeDropdown.offsetHeight || 60;
+          originalVolumeDropdown.style.visibility = 'visible';
+          
+          originalVolumeDropdown.style.left = rect.left + 'px';
+          var topPosition = rect.top - dropdownHeight - 4;
+          if (topPosition < 0) {
+            originalVolumeDropdown.style.top = (rect.bottom + 4) + 'px';
+          } else {
+            originalVolumeDropdown.style.top = topPosition + 'px';
+          }
+        }
+      });
+    }
+    
+    // 音量滑块事件
+    if (soundVolumeInput && soundVolumeValue) {
+      soundVolumeInput.addEventListener('input', function() {
+        currentSettings.soundVolume = parseFloat(this.value) || 1.0;
+        soundVolumeValue.textContent = currentSettings.soundVolume.toFixed(1);
+      });
+    }
+    
+    if (originalVolumeInput && originalVolumeValue) {
+      originalVolumeInput.addEventListener('input', function() {
+        currentSettings.originalAudioVolume = parseFloat(this.value) || 1.0;
+        originalVolumeValue.textContent = currentSettings.originalAudioVolume.toFixed(1);
+      });
+    }
+    
+    // 点击外部关闭下拉框
+    setTimeout(function() {
+      document.addEventListener('click', function(e) {
+        if (soundVolumeDropdown && soundVolumeBtn && 
+            !soundVolumeDropdown.contains(e.target) && 
+            !soundVolumeBtn.contains(e.target)) {
+          soundVolumeDropdown.style.display = 'none';
+        }
+        if (originalVolumeDropdown && originalVolumeBtn && 
+            !originalVolumeDropdown.contains(e.target) && 
+            !originalVolumeBtn.contains(e.target)) {
+          originalVolumeDropdown.style.display = 'none';
+        }
+      });
+    }, 100);
+    
+    // 绑定输入框中的设置项
+    bindSettingsInputs();
 
-    if (uploadVideoBtn && videoFileInput) {
-      uploadVideoBtn.addEventListener('click', function () { videoFileInput.click(); });
-      videoFileInput.addEventListener('change', function (e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) return;
-        setResult('视频文件已选择，请使用视频URL或视频ID', true);
-        videoFileInput.value = '';
+    // 上传视频文件到服务器（使用FormData）
+    function uploadVideoFile(file) {
+      return new Promise(function (resolve, reject) {
+        if (!file || !file.type || !file.type.startsWith('video/')) {
+          reject(new Error('请选择视频文件（.mp4/.mov）'));
+          return;
+        }
+        if (file.size > 100 * 1024 * 1024) {
+          reject(new Error('视频文件过大，请选择 ≤100MB 的视频'));
+          return;
+        }
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'video');
+        fetch(apiOrigin() + '/api/upload-temp-asset', {
+          method: 'POST',
+          body: formData,
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.success && data.url) {
+              resolve(data.url);
+            } else {
+              reject(new Error(data && data.message ? data.message : '上传失败'));
+            }
+          })
+          .catch(reject);
+      });
+    }
+    
+    // 添加视频预览
+    function addVideoPreview(videoUrl, videoId, file) {
+      var videoCard = document.getElementById('lip-video-card');
+      var previewEl = document.getElementById('lip-video-preview');
+      if (!videoCard || !previewEl) return;
+      
+      var cardContent = videoCard.querySelector('.lip-upload-card-content');
+      if (cardContent) cardContent.style.display = 'none';
+      
+      previewEl.style.display = 'block';
+      
+      if (file) {
+        // 本地文件预览
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var video = document.createElement('video');
+          video.src = e.target.result;
+          video.controls = true;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'contain';
+          previewEl.innerHTML = '';
+          previewEl.appendChild(video);
+          
+          var removeBtn = document.createElement('button');
+          removeBtn.className = 'lip-upload-remove-btn';
+          removeBtn.innerHTML = '×';
+          removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            removeVideoPreview();
+          });
+          previewEl.appendChild(removeBtn);
+        };
+        reader.readAsDataURL(file);
+      } else if (videoUrl) {
+        // URL预览
+        var video = document.createElement('video');
+        video.src = videoUrl;
+        video.controls = true;
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.style.objectFit = 'contain';
+        previewEl.innerHTML = '';
+        previewEl.appendChild(video);
+        
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'lip-upload-remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          removeVideoPreview();
+        });
+        previewEl.appendChild(removeBtn);
+      } else if (videoId) {
+        // ID显示
+        previewEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text);">视频ID: ' + videoId + '</div>' +
+          '<button class="lip-upload-remove-btn">×</button>';
+        var removeBtn = previewEl.querySelector('.lip-upload-remove-btn');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            removeVideoPreview();
+          });
+        }
+      }
+    }
+    
+    // 移除视频预览
+    function removeVideoPreview() {
+      var videoCard = document.getElementById('lip-video-card');
+      var previewEl = document.getElementById('lip-video-preview');
+      if (videoCard && previewEl) {
+        var cardContent = videoCard.querySelector('.lip-upload-card-content');
+        if (cardContent) cardContent.style.display = 'flex';
+        previewEl.style.display = 'none';
+        previewEl.innerHTML = '';
+      }
+      currentVideoUrl = '';
+      currentVideoId = '';
+      currentVideoFile = null;
+      currentVideoDuration = 0;
+      if (videoFileInput) videoFileInput.value = '';
+      if (videoInput) videoInput.value = '';
+    }
+    
+    // 添加音频预览
+    function addAudioPreview(audioUrl, audioId, file) {
+      var audioCard = document.getElementById('lip-audio-card');
+      var previewEl = document.getElementById('lip-audio-preview');
+      if (!audioCard || !previewEl) return;
+      
+      var cardContent = audioCard.querySelector('.lip-upload-card-content');
+      if (cardContent) cardContent.style.display = 'none';
+      
+      previewEl.style.display = 'block';
+      
+      if (file) {
+        // 本地文件预览
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var audio = document.createElement('audio');
+          audio.src = e.target.result;
+          audio.controls = true;
+          audio.style.width = '100%';
+          previewEl.innerHTML = '';
+          previewEl.appendChild(audio);
+          
+          var removeBtn = document.createElement('button');
+          removeBtn.className = 'lip-upload-remove-btn';
+          removeBtn.innerHTML = '×';
+          removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            removeAudioPreview();
+          });
+          previewEl.appendChild(removeBtn);
+        };
+        reader.readAsDataURL(file);
+      } else if (audioUrl) {
+        // URL预览
+        var audio = document.createElement('audio');
+        audio.src = audioUrl;
+        audio.controls = true;
+        audio.style.width = '100%';
+        previewEl.innerHTML = '';
+        previewEl.appendChild(audio);
+        
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'lip-upload-remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          removeAudioPreview();
+        });
+        previewEl.appendChild(removeBtn);
+      } else if (audioId) {
+        // ID显示
+        previewEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text);">音频ID: ' + audioId + '</div>' +
+          '<button class="lip-upload-remove-btn">×</button>';
+        var removeBtn = previewEl.querySelector('.lip-upload-remove-btn');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            removeAudioPreview();
+          });
+        }
+      }
+    }
+    
+    // 移除音频预览
+    function removeAudioPreview() {
+      var audioCard = document.getElementById('lip-audio-card');
+      var previewEl = document.getElementById('lip-audio-preview');
+      if (audioCard && previewEl) {
+        var cardContent = audioCard.querySelector('.lip-upload-card-content');
+        if (cardContent) cardContent.style.display = 'flex';
+        previewEl.style.display = 'none';
+        previewEl.innerHTML = '';
+      }
+      currentAudioUrl = '';
+      currentAudioId = '';
+      currentAudioBase64 = '';
+      currentAudioFile = null;
+      currentAudioDuration = 0;
+      if (audioFileInput) audioFileInput.value = '';
+      if (audioInput) audioInput.value = '';
+    }
+    
+    // 历史创作选择功能：打开视频选择模态框
+    function openHistoryVideoSelector(callback) {
+      var works = (window.MediaStudio && window.MediaStudio.getWorks()) || [];
+      var videoWorks = works.filter(function(w) {
+        return w.videos && w.videos.length > 0;
+      });
+      
+      if (videoWorks.length === 0) {
+        alert('暂无历史视频作品');
+        return;
+      }
+      
+      // 创建模态框
+      var modal = document.createElement('div');
+      modal.className = 'lip-history-modal-overlay';
+      modal.innerHTML = [
+        '<div class="lip-history-modal-content">',
+        '  <div class="lip-history-modal-header">',
+        '    <h3>选择历史视频</h3>',
+        '    <button type="button" class="lip-history-modal-close">×</button>',
+        '  </div>',
+        '  <div class="lip-history-modal-body" id="lip-history-video-modal-body">',
+        '  </div>',
+        '</div>'
+      ].join('');
+      
+      var modalBody = modal.querySelector('#lip-history-video-modal-body');
+      var videosHtml = '';
+      
+      videoWorks.forEach(function(work) {
+        if (work.videos && work.videos.length > 0) {
+          work.videos.forEach(function(videoUrl) {
+            videosHtml += '<div class="lip-history-item" data-url="' + String(videoUrl).replace(/"/g, '&quot;') + '">' +
+              '<video src="' + String(videoUrl).replace(/"/g, '&quot;') + '" preload="metadata" muted playsinline referrerpolicy="no-referrer"></video>' +
+              '<div class="lip-history-item-label">视频</div>' +
+              '</div>';
+          });
+        }
+      });
+      
+      modalBody.innerHTML = videosHtml || '<div style="padding: 40px; text-align: center; color: var(--muted);">暂无视频</div>';
+      
+      // 绑定视频选择事件
+      modalBody.querySelectorAll('.lip-history-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var url = item.getAttribute('data-url');
+          if (callback && url) {
+            callback(url);
+          }
+          document.body.removeChild(modal);
+        });
+      });
+      
+      // 关闭按钮
+      var closeBtn = modal.querySelector('.lip-history-modal-close');
+      closeBtn.addEventListener('click', function() {
+        document.body.removeChild(modal);
+      });
+      
+      // 点击背景关闭
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+      
+      document.body.appendChild(modal);
+    }
+    
+    // 历史创作选择功能：打开音频选择模态框
+    function openHistoryAudioSelector(callback) {
+      var works = (window.MediaStudio && window.MediaStudio.getWorks()) || [];
+      var audioWorks = works.filter(function(w) {
+        return w.audios && w.audios.length > 0;
+      });
+      
+      if (audioWorks.length === 0) {
+        alert('暂无历史音频作品');
+        return;
+      }
+      
+      // 创建模态框
+      var modal = document.createElement('div');
+      modal.className = 'lip-history-modal-overlay';
+      modal.innerHTML = [
+        '<div class="lip-history-modal-content">',
+        '  <div class="lip-history-modal-header">',
+        '    <h3>选择历史音频</h3>',
+        '    <button type="button" class="lip-history-modal-close">×</button>',
+        '  </div>',
+        '  <div class="lip-history-modal-body" id="lip-history-audio-modal-body">',
+        '  </div>',
+        '</div>'
+      ].join('');
+      
+      var modalBody = modal.querySelector('#lip-history-audio-modal-body');
+      var audiosHtml = '';
+      
+      audioWorks.forEach(function(work) {
+        if (work.audios && work.audios.length > 0) {
+          work.audios.forEach(function(audioUrl) {
+            audiosHtml += '<div class="lip-history-item" data-url="' + String(audioUrl).replace(/"/g, '&quot;') + '">' +
+              '<div class="lip-history-audio-icon">🎵</div>' +
+              '<div class="lip-history-item-label">音频</div>' +
+              '</div>';
+          });
+        }
+      });
+      
+      modalBody.innerHTML = audiosHtml || '<div style="padding: 40px; text-align: center; color: var(--muted);">暂无音频</div>';
+      
+      // 绑定音频选择事件
+      modalBody.querySelectorAll('.lip-history-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var url = item.getAttribute('data-url');
+          if (callback && url) {
+            callback(url);
+          }
+          document.body.removeChild(modal);
+        });
+      });
+      
+      // 关闭按钮
+      var closeBtn = modal.querySelector('.lip-history-modal-close');
+      closeBtn.addEventListener('click', function() {
+        document.body.removeChild(modal);
+      });
+      
+      // 点击背景关闭
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+      
+      document.body.appendChild(modal);
+    }
+    
+    // 视频历史创作按钮事件
+    var videoHistoryText = document.getElementById('lip-video-history-text');
+    if (videoHistoryText) {
+      videoHistoryText.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openHistoryVideoSelector(function(url) {
+          currentVideoUrl = url;
+          currentVideoId = '';
+          currentVideoFile = null;
+          removeVideoPreview();
+          addVideoPreview(url, '', null);
+          if (videoInput) videoInput.value = url;
+        });
+      });
+    }
+    
+    // 音频历史创作按钮事件
+    var audioHistoryText = document.getElementById('lip-audio-history-text');
+    if (audioHistoryText) {
+      audioHistoryText.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openHistoryAudioSelector(function(url) {
+          currentAudioUrl = url;
+          currentAudioId = '';
+          currentAudioBase64 = '';
+          currentAudioFile = null;
+          removeAudioPreview();
+          addAudioPreview(url, '', null);
+          if (audioInput) audioInput.value = url;
+        });
       });
     }
 
-    if (uploadAudioBtn && audioFileInput) {
-      uploadAudioBtn.addEventListener('click', function () { audioFileInput.click(); });
+    // 视频卡片点击事件
+    var videoCard = document.getElementById('lip-video-card');
+    if (videoCard && videoFileInput) {
+      videoCard.addEventListener('click', function(e) {
+        if (e.target.closest('.lip-upload-remove-btn')) return;
+        if (e.target.closest('.lip-upload-preview')) return;
+        if (e.target.closest('.lip-upload-sub-text')) return; // 历史创作文本单独处理
+        e.stopPropagation();
+        videoFileInput.click();
+      });
+    }
+    
+    // 视频文件选择事件
+    if (videoFileInput) {
+      videoFileInput.addEventListener('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        currentVideoFile = file;
+        currentVideoDuration = 0;
+        addVideoPreview('', '', file);
+        videoFileInput.value = '';
+        
+        
+        // 获取视频时长（失败不影响上传）
+        var durationPromise = getVideoDuration(file).catch(function() {
+          // 获取时长失败不影响上传流程
+          return 0;
+        });
+        
+        // 同时开始上传
+        var uploadPromise = uploadVideoFile(file);
+        
+        // 等待时长获取和上传都完成
+        Promise.all([durationPromise, uploadPromise])
+          .then(function(results) {
+            var duration = results[0];
+            var url = results[1];
+            
+            if (duration > 0) {
+              currentVideoDuration = duration;
+            }
+            
+            currentVideoUrl = url;
+            currentVideoId = '';
+            currentVideoFile = null;
+            removeVideoPreview();
+            addVideoPreview(url, '', null);
+            if (videoInput) videoInput.value = url;
+            
+            // 更新消息而不是添加新消息
+            var durationText = currentVideoDuration > 0 ? '，时长：' + formatDuration(currentVideoDuration) : '';
+          })
+          .catch(function(err) {
+            currentVideoFile = null;
+            currentVideoDuration = 0;
+            removeVideoPreview();
+          });
+      });
+    }
+
+    // 音频卡片点击事件
+    var audioCard = document.getElementById('lip-audio-card');
+    if (audioCard && audioFileInput) {
+      audioCard.addEventListener('click', function(e) {
+        if (e.target.closest('.lip-upload-remove-btn')) return;
+        if (e.target.closest('.lip-upload-preview')) return;
+        if (e.target.closest('.lip-upload-sub-text')) return; // 历史创作文本单独处理
+        e.stopPropagation();
+        audioFileInput.click();
+      });
+    }
+    
+    // 音频文件选择事件
+    if (audioFileInput) {
       audioFileInput.addEventListener('change', function (e) {
         var file = e.target.files && e.target.files[0];
         if (!file) return;
         currentAudioFile = file;
-        uploadAudioBtn.disabled = true;
-        uploadAudioBtn.textContent = '上传中...';
-        var reader = new FileReader();
-        reader.onload = function (e) {
-          var base64 = e.target.result;
-          currentAudioBase64 = base64;
-          uploadAudioFile(file)
-            .then(function (url) {
-              currentAudioUrl = url;
-              currentAudioBase64 = '';
-              if (audioInput) audioInput.value = url;
-              uploadAudioBtn.disabled = false;
-              uploadAudioBtn.textContent = '上传音频';
-              audioFileInput.value = '';
-              setResult('<span class="msg-success">✓ 音频已上传并转换为URL</span>', true);
-            })
-            .catch(function (err) {
-              currentAudioUrl = '';
-              if (audioInput) audioInput.value = '';
-              uploadAudioBtn.disabled = false;
-              uploadAudioBtn.textContent = '上传音频';
-              audioFileInput.value = '';
-              setResult('<span class="msg-warning">⚠️ 上传失败，将使用Base64编码：' + (err.message || '上传失败').replace(/\n/g, '<br>') + '</span>', true);
-            });
-        };
-        reader.onerror = function () {
-          setResult('<span class="msg-error">✗ 读取文件失败</span>', true);
-          uploadAudioBtn.disabled = false;
-          uploadAudioBtn.textContent = '上传音频';
-          audioFileInput.value = '';
-        };
-        reader.readAsDataURL(file);
+        currentAudioDuration = 0;
+        addAudioPreview('', '', file);
+        audioFileInput.value = '';
+        
+        
+        // 读取文件为Base64（用于备用）
+        var readerPromise = new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var base64 = e.target.result;
+            currentAudioBase64 = base64;
+            resolve();
+          };
+          reader.onerror = function () {
+            // 读取失败不影响上传流程
+            resolve();
+          };
+          reader.readAsDataURL(file);
+        });
+        
+        // 获取音频时长（失败不影响上传）
+        var durationPromise = getAudioDuration(file).catch(function() {
+          // 获取时长失败不影响上传流程
+          return 0;
+        });
+        
+        // 同时开始上传
+        var uploadPromise = uploadAudioFile(file);
+        
+        // 等待所有操作完成
+        Promise.all([readerPromise, durationPromise, uploadPromise])
+          .then(function(results) {
+            var duration = results[1];
+            var url = results[2];
+            
+            if (duration > 0) {
+              currentAudioDuration = duration;
+            }
+            
+            currentAudioUrl = url;
+            currentAudioBase64 = '';
+            currentAudioFile = null;
+            removeAudioPreview();
+            addAudioPreview(url, '', null);
+            if (audioInput) audioInput.value = url;
+            
+            // 更新消息而不是添加新消息
+            var durationText = currentAudioDuration > 0 ? '，时长：' + formatDuration(currentAudioDuration) : '';
+          })
+          .catch(function (err) {
+            currentAudioUrl = '';
+            currentAudioBase64 = '';
+            currentAudioFile = null;
+            currentAudioDuration = 0;
+            removeAudioPreview();
+          });
       });
     }
 
@@ -418,23 +1137,26 @@
             currentAudioId = val;
             currentAudioUrl = '';
             currentAudioBase64 = '';
+            removeAudioPreview();
+            addAudioPreview('', val, null);
           } else if (isBase64) {
             currentAudioBase64 = val;
             currentAudioUrl = '';
             currentAudioId = '';
+            removeAudioPreview();
+            addAudioPreview('', '', null);
           } else {
             var isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(val);
             if (isLocalhost) {
-              setResult('<span class="msg-warning">⚠️ 检测到本地地址（' + val + '），云雾 API 可能无法访问。将尝试使用Base64编码作为备选。</span>', true);
             }
             currentAudioUrl = val;
             currentAudioBase64 = '';
             currentAudioId = '';
+            removeAudioPreview();
+            addAudioPreview(val, '', null);
           }
         } else {
-          currentAudioUrl = '';
-          currentAudioBase64 = '';
-          currentAudioId = '';
+          removeAudioPreview();
         }
       });
     }
@@ -447,28 +1169,31 @@
           if (isId) {
             currentVideoId = val;
             currentVideoUrl = '';
+            removeVideoPreview();
+            addVideoPreview('', val, null);
           } else if (/^https?:\/\//i.test(val)) {
             currentVideoUrl = val;
             currentVideoId = '';
+            removeVideoPreview();
+            addVideoPreview(val, '', null);
           }
         } else {
-          currentVideoUrl = '';
-          currentVideoId = '';
+          removeVideoPreview();
         }
       });
     }
 
-    function identifyFace(apiKey, videoInputValue, callback) {
-      setResult('正在识别人脸…', true);
-      var body = { apiKey: apiKey };
+    function identifyFace(videoInputValue, callback) {
+      var body = {};
       if (/^\d+$/.test(videoInputValue)) {
         body.video_id = videoInputValue;
       } else {
         body.video_url = videoInputValue;
       }
+      var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
       fetch(apiOrigin() + '/api/yunwu/videos/identify-face', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
         body: JSON.stringify(body),
       })
         .then(function (r) { return r.json(); })
@@ -506,22 +1231,19 @@
     btn.addEventListener('click', function () {
       var apiKey = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
       if (!apiKey) {
-        setResult('<span class="msg-warning">请先在「设置」中配置并保存云雾 API Key</span>', true);
+        alert('请先登录，由管理员在后台分配云雾 API Key 后即可使用');
         return;
       }
-      var videoInputValue = getVal('lip-video', '') || currentVideoUrl || currentVideoId || '';
+      var videoInputValue = (videoInput ? videoInput.value.trim() : '') || currentVideoUrl || currentVideoId || '';
       if (!videoInputValue) {
-        setResult('<span class="msg-warning">请先输入视频 URL 或视频ID</span>', true);
         return;
       }
-      var audioInputValue = getVal('lip-audio', '') || '';
+      var audioInputValue = (audioInput ? audioInput.value.trim() : '') || '';
       if (!audioInputValue && !currentAudioUrl && !currentAudioId && !currentAudioBase64) {
-        setResult('<span class="msg-warning">请上传或输入音频</span>', true);
         return;
       }
       
       btn.disabled = true;
-      btn.textContent = '处理中...';
       
       function processAudioAndSubmit() {
         var finalAudio = '';
@@ -548,17 +1270,13 @@
           }
           
           if (!audioUrl && !audioBase64) {
-            setResult('<span class="msg-warning">请上传或输入音频</span>', true);
             btn.disabled = false;
-            btn.textContent = '生成对口型视频';
             return;
           }
           
           chooseUrlOrBase64(audioUrl, audioBase64, function (chosen) {
             if (!chosen) {
-              setResult('<span class="msg-error">✗ 无法处理音频，请重新上传或输入</span>', true);
               btn.disabled = false;
-              btn.textContent = '生成对口型视频';
               return;
             }
             finalAudio = chosen;
@@ -568,30 +1286,75 @@
         }
         
         function submitLipSyncRequest() {
+          // 从输入框读取设置值
+          var startTimeInput = document.getElementById('lip-sound-start-time');
+          var endTimeInput = document.getElementById('lip-sound-end-time');
+          var insertTimeInput = document.getElementById('lip-sound-insert-time');
+          var soundVolumeInput = document.getElementById('lip-sound-volume');
+          var originalVolumeInput = document.getElementById('lip-original-audio-volume');
+          
+          var soundStartTime = startTimeInput ? (parseInt(startTimeInput.value, 10) || 0) : currentSettings.soundStartTime;
+          var soundEndTime = endTimeInput ? (parseInt(endTimeInput.value, 10) || 5000) : currentSettings.soundEndTime;
+          var soundInsertTime = insertTimeInput ? (parseInt(insertTimeInput.value, 10) || 1000) : currentSettings.soundInsertTime;
+          var soundVolume = soundVolumeInput ? (parseFloat(soundVolumeInput.value) || 1.0) : currentSettings.soundVolume;
+          var originalAudioVolume = originalVolumeInput ? (parseFloat(originalVolumeInput.value) || 1.0) : currentSettings.originalAudioVolume;
+          
+          // 更新 currentSettings
+          currentSettings.soundStartTime = soundStartTime;
+          currentSettings.soundEndTime = soundEndTime;
+          currentSettings.soundInsertTime = soundInsertTime;
+          currentSettings.soundVolume = soundVolume;
+          currentSettings.originalAudioVolume = originalAudioVolume;
+          
+          // 添加用户消息
+          var userContent = '视频：' + videoInputValue;
+          userContent += ' 音频：' + (useAudioId ? 'ID:' + finalAudio : '已上传');
+          userContent += ' 起点:' + soundStartTime + 'ms 终点:' + soundEndTime + 'ms 插入:' + soundInsertTime + 'ms';
+          userContent += ' 音频音量:' + soundVolume.toFixed(1) + ' 原视频音量:' + originalAudioVolume.toFixed(1);
 
-        var body = {
-          apiKey: apiKey,
-          session_id: currentSessionId,
-          face_choose: [{
-            face_id: currentFaceId || '-1',
-            sound_start_time: parseInt(getVal('lip-sound-start-time', '0'), 10),
-            sound_end_time: parseInt(getVal('lip-sound-end-time', '5000'), 10),
-            sound_insert_time: parseInt(getVal('lip-sound-insert-time', '1000'), 10),
-            sound_volume: parseFloat(getVal('lip-sound-volume', '1'), 10),
-            original_audio_volume: parseFloat(getVal('lip-original-audio-volume', '1'), 10)
-          }]
-        };
-        if (useAudioId) {
-          body.face_choose[0].audio_id = finalAudio;
-        } else {
-          body.face_choose[0].sound_file = finalAudio;
-        }
+          var body = {
+            session_id: currentSessionId,
+            face_choose: [{
+              face_id: currentFaceId || '-1',
+              sound_start_time: soundStartTime,
+              sound_end_time: soundEndTime,
+              sound_insert_time: soundInsertTime,
+              sound_volume: soundVolume,
+              original_audio_volume: originalAudioVolume
+            }]
+          };
+          if (useAudioId) {
+            body.face_choose[0].audio_id = finalAudio;
+          } else {
+            body.face_choose[0].sound_file = finalAudio;
+          }
 
-          setResult('正在提交对口型任务…', true);
+          // 立即创建作品记录，显示"处理中"状态
           var workId = null;
+          if (window.MediaStudio && window.MediaStudio.addWork) {
+            workId = window.MediaStudio.addWork({
+              type: 'lipsync',
+              status: 'processing',
+              taskId: null, // 临时为null，等待API返回
+              prompt: userContent,
+              title: '对口型视频',
+              images: [],
+              videos: [],
+              audios: [],
+              progress: 0,
+              progressStatus: '正在提交请求...'
+            });
+            
+            // 刷新作品列表显示
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+              window.MediaStudio.refreshWorksList();
+            }
+          }
+          
+          var authHeadersLip = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
           fetch(apiOrigin() + '/api/yunwu/videos/advanced-lip-sync', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeadersLip),
           body: JSON.stringify(body),
         })
         .then(function (r) { return r.json(); })
@@ -601,23 +1364,35 @@
             (data && data.data && data.data.request_id);
           if (!taskId) {
             var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID，请检查 API 响应';
-            setResult('<span class="msg-error">✗ ' + String(errMsg).replace(/\n/g, '<br>') + '</span><pre>' + JSON.stringify(data || {}, null, 2) + '</pre>', true);
             btn.disabled = false;
+            
+            // 更新作品状态为失败
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              window.MediaStudio.updateWork(workId, {
+                status: 'failed',
+                progressStatus: errMsg
+              });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                window.MediaStudio.refreshWorksList();
+              }
+            }
+            
             return Promise.reject(new Error(errMsg));
           }
-          if (window.MediaStudio && window.MediaStudio.addWork) {
-            workId = window.MediaStudio.addWork({
-              type: 'lipsync',
-              status: 'processing',
+          
+          // 更新作品记录的taskId
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            window.MediaStudio.updateWork(workId, {
               taskId: taskId,
-              title: '对口型视频',
-              images: [],
-              videos: [],
-              audios: [],
+              progressStatus: '任务已提交，等待处理...'
             });
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+              window.MediaStudio.refreshWorksList();
+            }
           }
-          setResult('任务已创建，轮询中: ' + taskId + ' …', true);
-          var setProgress = function (txt) { setResult(txt, true); };
+          var setProgress = function (txt) {
+            // 进度更新（已移除聊天显示）
+          };
           return new Promise(function (resolve, reject) {
             pollTask(taskId, apiKey, workId, setProgress, resolve, reject, 0);
           });
@@ -650,46 +1425,26 @@
             if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
           }
           if (!hasResources) {
-            var msg = '<span class="msg-warning">任务完成但未解析到视频链接。</span>';
-            if (raw) {
-              msg += '<br><details style="margin-top:12px"><summary style="cursor:pointer">点击展开「查询任务」原始响应（便于排查字段）</summary><pre style="max-height:240px;overflow:auto;font-size:11px;white-space:pre-wrap;background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;margin-top:8px">' + JSON.stringify(raw, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></details>';
-            }
-            setResult(msg, true);
             btn.disabled = false;
-            btn.textContent = '生成对口型视频';
             return;
           }
-          var html = '<span class="msg-success">✓ 生成完成</span><br>';
-          videos.forEach(function (u, i) {
-            html += '<div class="t2i-out"><video src="' + (u || '').replace(/"/g, '&quot;') + '" controls style="max-width:100%;border-radius:8px;"></video><a href="' + (u || '#').replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">打开视频</a></div>';
-          });
-          setResult(html, true);
           btn.disabled = false;
-          btn.textContent = '生成对口型视频';
         })
         .catch(function (err) {
-          setResult('<span class="msg-error">✗ ' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
           if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
             window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
           }
           btn.disabled = false;
-          btn.textContent = '生成对口型视频';
         });
         }
       }
       
       if (!currentSessionId || currentSessionId !== videoInputValue) {
-        identifyFace(apiKey, videoInputValue, function (err, result) {
+        identifyFace(videoInputValue, function (err, result) {
           if (err) {
-            setResult('<span class="msg-error">✗ 人脸识别失败：' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
             btn.disabled = false;
-            btn.textContent = '生成对口型视频';
             return;
-          }
-          if (result && result.faces && result.faces.length > 0) {
-            setResult('<span class="msg-success">✓ 人脸识别校验成功，检测到 ' + result.faces.length + ' 个人脸（默认使用第一个，ID: ' + result.faceId + '），正在进入下一步：提交对口型任务…</span>', true);
-          } else {
-            setResult('<span class="msg-success">✓ 人脸识别校验成功，正在进入下一步：提交对口型任务…</span>', true);
           }
           processAudioAndSubmit();
         });

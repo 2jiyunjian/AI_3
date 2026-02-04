@@ -271,7 +271,7 @@
     var url = apiOrigin() + '/api/yunwu/videos/image2video/' + encodeURIComponent(taskId);
     fetch(url, {
       method: 'GET',
-      headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {}),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -322,6 +322,19 @@
           '';
         
         if (status === 'done' && videos.length > 0) {
+          // 任务完成且有资源，立即更新作品状态
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            var updates = {
+              status: 'ready',
+              videos: videos,
+              resultUrl: videos[0],
+              videoId: videoId,
+              progress: 100,
+              progressStatus: '已完成'
+            };
+            window.MediaStudio.updateWork(workId, updates);
+            if (window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+          }
           resolve({ videos: videos, raw: data, videoId: videoId });
           return;
         }
@@ -542,7 +555,7 @@
     btn.addEventListener('click', function () {
       var apiKey = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
       if (!apiKey) {
-        setResult('<span class="msg-warning">请先在「设置」中配置并保存云雾 API Key</span>', true);
+        setResult('<span class="msg-warning">请先登录，由管理员在后台分配云雾 API Key 后即可使用</span>', true);
         return;
       }
       var model = getVal('i2v-model', 'kling-v1');
@@ -607,7 +620,6 @@
       function submitRequest() {
 
         var body = {
-          apiKey: apiKey,
           model_name: model,
           image: finalImage,
           mode: mode,
@@ -621,10 +633,36 @@
 
         setResult('正在提交任务…', true);
         btn.disabled = true;
+        
+        // 立即创建作品记录，显示"处理中"状态
         var workId = null;
+        if (window.MediaStudio && window.MediaStudio.addWork) {
+          var refImageUrl = (typeof finalImage === 'string' && (finalImage.startsWith('http') || finalImage.startsWith('data:'))) ? finalImage : (finalImage && finalImage.value) ? finalImage.value : '';
+          workId = window.MediaStudio.addWork({
+            type: 'img2video',
+            status: 'processing',
+            taskId: null, // 临时为null，等待API返回
+            prompt: getVal('i2v-prompt', ''),
+            title: (getVal('i2v-prompt', '') || '图生视频').toString().slice(0, 80),
+            images: [],
+            videos: [],
+            audios: [],
+            referenceImages: refImageUrl ? [refImageUrl] : [],
+            model_name: model,
+            progress: 0,
+            progressStatus: '正在提交请求...'
+          });
+          
+          // 刷新作品列表显示
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+            window.MediaStudio.refreshWorksList();
+          }
+        }
+        
+        var authHeadersI2v = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
         fetch(apiOrigin() + '/api/yunwu/videos/image2video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeadersI2v),
         body: JSON.stringify(body),
       })
         .then(function (r) { return r.json(); })
@@ -636,20 +674,31 @@
             var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID，请检查 API 响应';
             setResult('<span class="msg-error">✗ ' + String(errMsg).replace(/\n/g, '<br>') + '</span><pre>' + JSON.stringify(data || {}, null, 2) + '</pre>', true);
             btn.disabled = false;
+            
+            // 更新作品状态为失败
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              window.MediaStudio.updateWork(workId, {
+                status: 'failed',
+                progressStatus: errMsg
+              });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                window.MediaStudio.refreshWorksList();
+              }
+            }
+            
             return Promise.reject(new Error(errMsg));
           }
           taskId = String(taskId);
-          if (window.MediaStudio && window.MediaStudio.addWork) {
-            workId = window.MediaStudio.addWork({
-              type: 'img2video',
-              status: 'processing',
+          
+          // 更新作品记录的taskId
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            window.MediaStudio.updateWork(workId, {
               taskId: taskId,
-              title: (getVal('i2v-prompt', '') || '图生视频').toString().slice(0, 80),
-              images: [],
-              videos: [],
-              audios: [],
-              model_name: model,
+              progressStatus: '任务已提交，等待处理...'
             });
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+              window.MediaStudio.refreshWorksList();
+            }
           }
           setResult('任务已创建，轮询中: ' + taskId + ' …', true);
           var setProgress = function (txt) { setResult(txt, true); };
@@ -704,6 +753,7 @@
           setResult('<span class="msg-error">✗ ' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
           if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
             window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
           }
           btn.disabled = false;
         });

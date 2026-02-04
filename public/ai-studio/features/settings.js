@@ -1,95 +1,204 @@
 /**
  * AI创作工坊 - 设置（独立文件）
- * 云雾 API：连接、按模型接口测试、保存 API Key
+ * 云雾 API：连接测试、保存 API Key
  */
 (function () {
   var id = 'settings';
   var name = '设置';
   var icon = '⚙️';
 
-  // 与各功能对应的云雾模型测试项（后端已有测试的会在测试时真实请求）
+  // 与各功能对应的云雾模型测试项
   var MODEL_ITEMS = [
-    { id: 'text2img', name: '图片生成', apiPath: '/api/yunwu/images/test', method: 'POST', implemented: true },
-    { id: 'img2video', name: '图生视频', apiPath: '/api/yunwu/videos/image2video/test', method: 'POST', implemented: true },
+    { id: 'text2img', name: '生成图像', apiPath: '/api/yunwu/images/test', method: 'POST', implemented: true },
+    { id: 'text2video', name: '生成视频', apiPath: '/api/yunwu/videos/text2video/test', method: 'POST', implemented: true },
+    { id: 'img2video', name: '生成视频', apiPath: '/api/yunwu/videos/image2video/test', method: 'POST', implemented: true },
     { id: 'lipsync', name: '对口型', apiPath: '/api/yunwu/videos/identify-face/test', method: 'POST', implemented: true },
     { id: 'text2audio', name: '文生音效', apiPath: '/api/yunwu/audio/text-to-audio/test', method: 'POST', implemented: true },
     { id: 'dubbing', name: '视频生音效', apiPath: '/api/yunwu/audio/video-to-audio/test', method: 'POST', implemented: true },
-    { id: 'editimg', name: '多图参考生图', apiPath: null, implemented: true }
+    { id: 'editimg', name: '多图参考生图', apiPath: '/api/yunwu/images/multi-image2image/test', method: 'POST', implemented: true }
   ];
 
-  function getPanel() {
-    var base = (window.MediaStudio && window.MediaStudio.getYunwuApiBase()) || '';
-    var key = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
-    var checkboxes = MODEL_ITEMS.map(function (m) {
+  function createModal() {
+    var modal = document.getElementById('settings-modal-overlay');
+    if (modal) return modal;
+
+    // 生成模型勾选框列表，每个模型行包含结果容器（API Key 由管理员在后台分配，用户无需配置）
+    var checkboxesHTML = MODEL_ITEMS.map(function(m) {
       var checked = m.implemented ? ' checked' : '';
-      return '<label class="ms-check-row"><input type="checkbox" class="ms-model-check" data-id="' + m.id + '"' + checked + '><span>' + m.name + '</span></label>';
-    }).join('');
-    return [
-      '<h2 class="panel-title">云雾 API · 连接与按模型接口测试</h2>',
-      '<div class="form-row">',
-      '  <label>API 基础地址</label>',
-      '  <input type="url" id="ms-yunwu-base" placeholder="留空则经本站代理请求云雾；自建代理时可填代理地址" value="' + (base || '').replace(/"/g, '&quot;') + '">',
-      '  <p class="hint">创作工坊各功能会使用此处配置的 Key；「测试连接」经当前站点后端请求云雾验证 Key。</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>API Key</label>',
-      '  <input type="password" id="ms-yunwu-key" placeholder="云雾 API 密钥" value="' + (key ? '********' : '') + '" data-has-value="' + (key ? '1' : '') + '">',
-      '  <p class="hint">保存后仅显示脱敏，重新输入可覆盖</p>',
-      '</div>',
-      '<div class="form-row">',
-      '  <label>测试以下模型（勾选后将按模型分别测试并显示结果）</label>',
-      '  <div class="ms-model-checks" id="ms-model-checks">' + checkboxes + '</div>',
-      '</div>',
-      '<div class="form-row">',
-      '  <div class="ms-action-buttons">',
-      '    <button type="button" class="btn-primary" id="ms-yunwu-test">🧪 测试连接</button>',
-      '    <button type="button" class="btn-secondary" id="ms-yunwu-save">💾 保存配置</button>',
+      return '<div class="settings-model-row" data-id="' + m.id + '"><label class="settings-model-check-row"><input type="checkbox" class="settings-model-check" data-id="' + m.id + '"' + checked + '><span class="settings-model-name">' + m.name + '</span></label><span class="settings-model-result" data-id="' + m.id + '"></span></div>';
+    }).join('\n');
+
+    var modalHTML = [
+      '<div class="settings-modal-overlay" id="settings-modal-overlay">',
+      '  <div class="settings-modal-content">',
+      '    <div class="settings-modal-header">',
+      '      <h3 class="settings-modal-title">设置</h3>',
+      '      <button class="settings-modal-close" id="settings-modal-close">×</button>',
+      '    </div>',
+      '    <div class="settings-modal-body">',
+      '      <p class="settings-api-key-hint">API Key 由管理员在后台分配，无需在此配置。请先登录后使用。</p>',
+      '      <div class="settings-models-section">',
+      '        <div class="settings-models-header">',
+      '          <label class="settings-models-title">测试以下模型端点</label>',
+      '          <div class="settings-select-all-btns">',
+      '            <button type="button" class="settings-select-all-btn" id="settings-select-all-btn">全选</button>',
+      '            <button type="button" class="settings-select-all-btn" id="settings-unselect-all-btn">取消全选</button>',
+      '          </div>',
+      '        </div>',
+      '        <div class="settings-models-list" id="settings-models-list">',
+      checkboxesHTML,
+      '        </div>',
+      '      </div>',
+      '      <button type="button" class="settings-test-btn" id="settings-test-btn">测试连接</button>',
+      '    </div>',
       '  </div>',
-      '</div>',
-      '<div class="result-area" id="ms-yunwu-result">测试结果将按模型分行显示</div>'
+      '</div>'
     ].join('\n');
+
+    var temp = document.createElement('div');
+    temp.innerHTML = modalHTML;
+    modal = temp.firstElementChild;
+    document.body.appendChild(modal);
+    return modal;
   }
 
-  function setResult(html, isContent) {
-    var el = document.getElementById('ms-yunwu-result');
-    if (!el) return;
-    el.innerHTML = html;
-    el.classList.toggle('has-content', !!isContent);
+  function showModal() {
+    var modal = createModal();
+    modal.classList.add('active');
+    
+    // 初始化事件（只在第一次创建时绑定）
+    if (!modal.dataset.eventsBound) {
+      initModalEvents(modal);
+      modal.dataset.eventsBound = '1';
+    }
   }
 
-  function createStatusIcon(status) {
-    if (status === 'ok') return '<span class="ms-status-icon ms-status-success">✓</span>';
-    if (status === 'pending') return '<span class="ms-status-icon ms-status-pending">○</span>';
-    if (status === 'loading') return '<span class="ms-status-icon ms-status-loading">⏳</span>';
-    return '<span class="ms-status-icon ms-status-error">✗</span>';
+  function hideModal() {
+    var modal = document.getElementById('settings-modal-overlay');
+    if (modal) modal.classList.remove('active');
   }
 
-  function getApiKeyForTest(keyEl) {
-    var raw = (keyEl && keyEl.value) ? keyEl.value.trim() : '';
-    if (raw && raw !== '********') return raw;
-    return (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
+  function initModalEvents(modal) {
+    var closeBtn = modal.querySelector('#settings-modal-close');
+    var testBtn = modal.querySelector('#settings-test-btn');
+    var selectAllBtn = modal.querySelector('#settings-select-all-btn');
+    var unselectAllBtn = modal.querySelector('#settings-unselect-all-btn');
+
+    if (closeBtn) {
+      closeBtn.onclick = hideModal;
+    }
+
+    // 点击模态框外部关闭
+    modal.onclick = function(e) {
+      if (e.target === modal) hideModal();
+    };
+
+    // 全选按钮
+    if (selectAllBtn) {
+      selectAllBtn.onclick = function() {
+        modal.querySelectorAll('.settings-model-check').forEach(function(cb) {
+          cb.checked = true;
+        });
+      };
+    }
+
+    // 取消全选按钮
+    if (unselectAllBtn) {
+      unselectAllBtn.onclick = function() {
+        modal.querySelectorAll('.settings-model-check').forEach(function(cb) {
+          cb.checked = false;
+        });
+      };
+    }
+
+    if (testBtn) {
+      testBtn.onclick = function() {
+        var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
+        if (!authHeaders.Authorization) {
+          alert('请先登录。登录后由管理员分配的 API Key 将自动生效。');
+          return;
+        }
+
+        // 获取勾选的模型
+        var checked = [];
+        modal.querySelectorAll('.settings-model-check:checked').forEach(function(cb) {
+          var modelId = cb.getAttribute('data-id');
+          var model = MODEL_ITEMS.filter(function(m) { return m.id === modelId; })[0];
+          if (model) checked.push(model);
+        });
+
+        if (checked.length === 0) {
+          alert('请至少勾选一个要测试的模型');
+          return;
+        }
+
+        // 清除之前的结果
+        modal.querySelectorAll('.settings-model-result').forEach(function(el) {
+          el.textContent = '';
+          el.className = 'settings-model-result';
+        });
+
+        testBtn.disabled = true;
+        testBtn.textContent = '测试中...';
+
+        var origin = (window.location.origin || '').replace(/\/+$/, '');
+        if (!origin) {
+          origin = window.location.protocol + '//' + (window.location.hostname || 'localhost') + (window.location.port ? ':' + window.location.port : '');
+        }
+
+        // 测试所有勾选的模型（请求时只带登录态，服务器使用管理员分配的 Key）
+        var completed = 0;
+        var total = checked.length;
+
+        checked.forEach(function(model) {
+          var resultEl = modal.querySelector('.settings-model-result[data-id="' + model.id + '"]');
+          if (!resultEl) return;
+          
+          resultEl.textContent = '测试中...';
+          resultEl.className = 'settings-model-result testing';
+
+          runSingleModelTest(model, origin, authHeaders).then(function(result) {
+            completed++;
+            
+            if (resultEl) {
+              if (result.status === 'ok') {
+                resultEl.textContent = '✓验证通过';
+                resultEl.className = 'settings-model-result success';
+              } else {
+                resultEl.textContent = '× ' + (result.message || '连接失败');
+                resultEl.className = 'settings-model-result error';
+              }
+            }
+            
+            if (completed === total) {
+              testBtn.disabled = false;
+              testBtn.textContent = '测试连接';
+            }
+          });
+        });
+      };
+    }
   }
 
-  function runSingleModelTest(model, apiKey, origin) {
+  function runSingleModelTest(model, origin, authHeaders) {
     return new Promise(function (resolve) {
       if (!model.implemented || !model.apiPath) {
         resolve({ 
           id: model.id, 
           name: model.name, 
-          status: 'pending', 
-          message: '该模型测试接口待接入，请保存 Key 后在各功能内试用',
-          timestamp: new Date().toLocaleTimeString()
+          status: 'fail', 
+          message: '该模型测试接口待接入',
         });
         return;
       }
       var url = (origin || '').replace(/\/+$/, '') + model.apiPath;
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders || {});
       var opts = {
         method: model.method || 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: model.method === 'POST' ? JSON.stringify({ apiKey: apiKey }) : undefined
+        headers: headers,
+        body: model.method === 'POST' ? JSON.stringify({}) : undefined
       };
       if (model.method === 'GET') delete opts.body;
-      var startTime = Date.now();
       fetch(url, opts)
         .then(function (r) { 
           return r.json().catch(function () { 
@@ -97,146 +206,59 @@
           }); 
         })
         .then(function (data) {
-          var duration = Date.now() - startTime;
           resolve({
             id: model.id,
             name: model.name,
             status: data.success ? 'ok' : 'fail',
-            message: data.message || data.error || (data.success ? '验证通过' : '验证未通过'),
-            duration: duration,
-            timestamp: new Date().toLocaleTimeString()
+            message: data.message || data.error || (data.success ? '' : '验证未通过'),
           });
         })
         .catch(function (err) {
-          var duration = Date.now() - startTime;
           resolve({ 
             id: model.id, 
             name: model.name, 
             status: 'fail', 
-            message: err.message || String(err),
-            duration: duration,
-            timestamp: new Date().toLocaleTimeString()
+            message: err.message || String(err) || '网络错误',
           });
         });
     });
   }
 
+  function showTestResult(resultDiv, success, message) {
+    if (!resultDiv) return;
+    resultDiv.className = 'settings-test-result ' + (success ? 'success' : 'error') + ' active';
+    var icon = success ? '<span class="settings-test-result-icon">✓</span>' : '<span class="settings-test-result-icon">×</span>';
+    resultDiv.innerHTML = icon + '<span class="settings-test-result-message">' + (message || '') + '</span>';
+  }
+
+  function getPanel() {
+    // 设置不再在侧边栏显示，返回空字符串
+    return '';
+  }
+
   function init(container) {
-    if (!container) return;
-    var baseEl = document.getElementById('ms-yunwu-base');
-    var keyEl = document.getElementById('ms-yunwu-key');
-    var testBtn = document.getElementById('ms-yunwu-test');
-    var saveBtn = document.getElementById('ms-yunwu-save');
-    if (!baseEl || !keyEl || !testBtn || !saveBtn) return;
+    // 设置功能不再在内容区初始化，而是通过右上角按钮触发
+  }
 
-    testBtn.addEventListener('click', function () {
-      var apiKey = getApiKeyForTest(keyEl);
-      if (!apiKey) {
-        setResult('<span class="msg-warning">请先输入或保存云雾 API Key 再测试</span>', true);
-        return;
-      }
-      var checked = [];
-      container.querySelectorAll('.ms-model-check:checked').forEach(function (cb) {
-        var m = MODEL_ITEMS.filter(function (x) { return x.id === cb.getAttribute('data-id'); })[0];
-        if (m) checked.push(m);
-      });
-      if (checked.length === 0) {
-        setResult('<span class="msg-warning">请至少勾选一个要测试的模型</span>', true);
-        return;
-      }
-      var origin = (window.location.origin || '').replace(/\/+$/, '');
-      if (!origin) origin = window.location.protocol + '//' + (window.location.hostname || 'localhost') + (window.location.port ? ':' + window.location.port : '');
-      setResult('<div class="ms-test-progress"><div class="ms-progress-bar"><div class="ms-progress-fill" style="width:0%"></div></div><div class="ms-progress-text">准备测试…</div></div>', true);
-      testBtn.disabled = true;
-      testBtn.textContent = '⏳ 测试中...';
-
-      var total = checked.length;
-      var completed = 0;
-      var results = [];
-      
-      function updateProgress() {
-        var progressHtml = '<div class="ms-test-progress">';
-        progressHtml += '<div class="ms-progress-bar"><div class="ms-progress-fill" style="width:' + (completed / total * 100) + '%"></div></div>';
-        progressHtml += '<div class="ms-progress-text">测试中：' + completed + ' / ' + total + '</div>';
-        progressHtml += '</div>';
-        
-        var resultsHtml = results.map(function (r) {
-          var icon = createStatusIcon(r.status);
-          var msg = (r.message || '').replace(/\n/g, '<br>');
-          var duration = r.duration ? ' <span class="ms-duration">(' + r.duration + 'ms)</span>' : '';
-          var timestamp = r.timestamp ? ' <span class="ms-timestamp">' + r.timestamp + '</span>' : '';
-          var statusClass = r.status === 'ok' ? 'ms-result-card-success' : (r.status === 'pending' ? 'ms-result-card-pending' : 'ms-result-card-error');
-          return '<div class="ms-result-card ' + statusClass + '">' +
-            '<div class="ms-result-header">' + icon + '<strong>' + r.name + '</strong>' + duration + timestamp + '</div>' +
-            '<div class="ms-result-body"><span class="ms-result-msg">' + msg + '</span></div>' +
-            '</div>';
-        }).join('');
-        
-        setResult(progressHtml + '<div class="ms-result-list">' + resultsHtml + '</div>', true);
-      }
-      
-      updateProgress();
-      
-      Promise.all(checked.map(function (m) {
-        return runSingleModelTest(m, apiKey, origin).then(function (result) {
-          completed++;
-          results.push(result);
-          updateProgress();
-          return result;
-        });
-      }))
-        .then(function (allResults) {
-          var successCount = allResults.filter(function (r) { return r.status === 'ok'; }).length;
-          var failCount = allResults.filter(function (r) { return r.status === 'fail'; }).length;
-          var pendingCount = allResults.filter(function (r) { return r.status === 'pending'; }).length;
-          
-          var summary = '<div class="ms-test-summary">';
-          summary += '<div class="ms-summary-item"><span class="ms-summary-label">总计：</span><span class="ms-summary-value">' + total + '</span></div>';
-          summary += '<div class="ms-summary-item"><span class="ms-summary-label ms-summary-success">成功：</span><span class="ms-summary-value">' + successCount + '</span></div>';
-          if (failCount > 0) summary += '<div class="ms-summary-item"><span class="ms-summary-label ms-summary-error">失败：</span><span class="ms-summary-value">' + failCount + '</span></div>';
-          if (pendingCount > 0) summary += '<div class="ms-summary-item"><span class="ms-summary-label ms-summary-pending">待接入：</span><span class="ms-summary-value">' + pendingCount + '</span></div>';
-          summary += '</div>';
-          
-          var finalResults = allResults.map(function (r) {
-            var icon = createStatusIcon(r.status);
-            var msg = (r.message || '').replace(/\n/g, '<br>');
-            var duration = r.duration ? ' <span class="ms-duration">(' + r.duration + 'ms)</span>' : '';
-            var timestamp = r.timestamp ? ' <span class="ms-timestamp">' + r.timestamp + '</span>' : '';
-            var statusClass = r.status === 'ok' ? 'ms-result-card-success' : (r.status === 'pending' ? 'ms-result-card-pending' : 'ms-result-card-error');
-            return '<div class="ms-result-card ' + statusClass + '">' +
-              '<div class="ms-result-header">' + icon + '<strong>' + r.name + '</strong>' + duration + timestamp + '</div>' +
-              '<div class="ms-result-body"><span class="ms-result-msg">' + msg + '</span></div>' +
-              '</div>';
-          }).join('');
-          
-          setResult(summary + '<div class="ms-result-list">' + finalResults + '</div>', true);
-        })
-        .catch(function (err) {
-          setResult('<div class="ms-result-card ms-result-card-error">' +
-            '<div class="ms-result-header"><span class="ms-status-icon ms-status-error">✗</span><strong>测试异常</strong></div>' +
-            '<div class="ms-result-body"><span class="ms-result-msg">' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span></div>' +
-            '</div>', true);
-        })
-        .then(function () { 
-          testBtn.disabled = false;
-          testBtn.textContent = '🧪 测试连接';
-        });
-    });
-
-    saveBtn.addEventListener('click', function () {
-      var base = (baseEl.value || '').trim();
-      var key = (keyEl.value || '').trim();
-      if (!key || key === '********') key = (window.MediaStudio && window.MediaStudio.getYunwuApiKey()) || '';
-      if (window.MediaStudio && window.MediaStudio.setYunwuConfig) {
-        window.MediaStudio.setYunwuConfig(base, key);
-      }
-      keyEl.value = key ? '********' : '';
-      keyEl.setAttribute('data-has-value', key ? '1' : '0');
-      setResult('<span class="msg-success">✓ 已保存</span> 云雾 API 基础地址与 Key 已写入本地，各功能将使用此配置调用对应模型。', true);
-    });
+  // 初始化设置按钮事件
+  function initSettingsButton() {
+    var btn = document.getElementById('studioSettingsBtn');
+    if (btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        showModal();
+      };
+    }
   }
 
   if (window.MediaStudio && window.MediaStudio.register) {
     window.MediaStudio.register(id, { name: name, icon: icon, getPanel: getPanel, init: init });
+  }
+
+  // 页面加载完成后初始化设置按钮
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSettingsButton);
+  } else {
+    setTimeout(initSettingsButton, 0);
   }
 })();

@@ -1,226 +1,75 @@
-// ========== API 配置 ==========
-// API 基础 URL 配置（支持本地和线上测试）
-// 可以通过 localStorage 设置 'api_base_url' 来覆盖默认值
-// 设置 'use_local' 为 'true' 强制使用本地地址（即使在线上也使用localhost）
-function getApiBaseUrl() {
-  // 优先从 localStorage 读取配置
-  try {
-    const customBaseUrl = localStorage.getItem('api_base_url');
-    if (customBaseUrl && customBaseUrl.trim()) {
-      // 如果明确设置了api_base_url，使用该值（允许localhost）
-      return customBaseUrl.trim().replace(/\/+$/, '');
-    }
-  } catch (e) {
-    console.warn('无法读取 api_base_url 配置:', e);
-  }
-  
-  // 检查是否强制使用本地
-  const useLocal = localStorage.getItem('use_local') === 'true';
-  const currentOrigin = window.location.origin;
-  const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
-  
-  if (useLocal || isLocalhost) {
-    // 本地环境：使用相对路径（空字符串），这样会使用当前域名和端口
-    return '';
-  }
-  
-  // 线上环境：使用当前页面的origin
-  return currentOrigin;
-}
-
-// 构建完整的 API URL
-function buildApiUrl(path) {
-  const baseUrl = getApiBaseUrl();
-  // 确保 path 以 / 开头
-  const normalizedPath = path.startsWith('/') ? path : '/' + path;
-  return baseUrl + normalizedPath;
-}
-
-// 立即定义 switchMenu 函数，确保在 HTML 解析时就可访问
-function switchMenu(menu) {
-  // 更新菜单激活状态
-  document.querySelectorAll('.menu-link').forEach(link => {
-    link.classList.remove('active');
-  });
-  const activeLink = document.querySelector(`[data-menu="${menu}"]`);
-  if (activeLink) {
-    activeLink.classList.add('active');
-  }
-  
-  // 隐藏所有面板
-  document.querySelectorAll('.content-panel').forEach(panel => {
-    panel.classList.add('hidden');
-  });
-  
-  // 显示对应面板
-  const panelMap = {
-    'create': 'createPanel',
-    'manage': 'managePanel',
-    'works': 'worksPanel',
-    'recite': 'recitePanel',
-    'promote': 'promotePanel'
-  };
-  
-  const panelId = panelMap[menu];
-  if (panelId) {
-    const panel = document.getElementById(panelId);
-    if (panel) {
-      panel.classList.remove('hidden');
-    }
-  }
-  
-  // 根据菜单加载相应数据（延迟执行，确保其他函数已定义）
-  setTimeout(() => {
-    if (typeof window.loadDigitalHumans === 'function' && menu === 'manage') {
-      window.loadDigitalHumans();
-    } else if (typeof window.loadWorks === 'function' && menu === 'works') {
-      window.loadWorks();
-    } else if (typeof window.loadRecitePanel === 'function' && menu === 'recite') {
-      window.loadRecitePanel();
-    } else if (typeof window.loadPromotePanel === 'function' && menu === 'promote') {
-      window.loadPromotePanel();
-    }
-  }, 100);
-}
-window.switchMenu = switchMenu;
-
 /**
- * 压缩图片用于存储/网络传输，避免 431 或 localStorage 超限
- * @param {string} dataUrlOrBase64 - data URL 或纯 base64
- * @param {number} maxWidth - 最大宽度（像素），默认 640
- * @param {number} quality - JPEG 质量 0~1，默认 0.75
- * @returns {Promise<string>} 压缩后的 base64（无 data: 前缀）
+ * 数字人 - 主应用（依赖 core.js, config.js, nav.js, state.js, main.js）
+ * 全局变量在 modules/state.js 中定义
  */
-function compressImageForStorage(dataUrlOrBase64, maxWidth, quality) {
-  maxWidth = maxWidth || 640;
-  quality = quality == null ? 0.75 : Math.min(1, Math.max(0, quality));
-  var str = String(dataUrlOrBase64 || '').trim();
-  if (!str) return Promise.resolve('');
-  var dataUrl = str.indexOf('data:') === 0 ? str : ('data:image/png;base64,' + str);
-  return new Promise(function(resolve) {
-    var img = new Image();
-    img.onload = function() {
-      try {
-        var w = img.naturalWidth || img.width;
-        var h = img.naturalHeight || img.height;
-        if (w <= maxWidth && h <= maxWidth) {
-          w = img.naturalWidth || img.width;
-          h = img.naturalHeight || img.height;
-        } else {
-          if (w > h) {
-            h = Math.round(h * maxWidth / w);
-            w = maxWidth;
-          } else {
-            w = Math.round(w * maxWidth / h);
-            h = maxWidth;
-          }
-        }
-        var canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        var out = canvas.toDataURL('image/jpeg', quality);
-        var base64 = out.indexOf(',') >= 0 ? out.slice(out.indexOf(',') + 1) : out;
-        resolve(base64);
-      } catch (e) {
-        resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str);
-      }
-    };
-    img.onerror = function() { resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str); };
-    img.crossOrigin = 'anonymous';
-    img.src = dataUrl;
-  });
+// loadRecitePanel、switchRecitePlatform、updateRecitePlatformUI、updateReciteCharCountYunwu、loadReciteAvatars 在 modules/recite.js
+// reciteTtsVoiceList 在 state.js；TTS 音色列表、loadYunwuTTSVoices、previewReciteVoice、loadCachedVoicesForContext 在 modules/voices.js
+
+// 加载卖货推送面板（仅云雾）
+function loadPromotePanel() {
+  if (typeof selectedPromotePlatform !== 'undefined') selectedPromotePlatform = 'yunwu';
+  loadCachedVoicesForContext('promote');
+  const promptInput = document.getElementById('promotePrompt');
+  if (promptInput) {
+    promptInput.addEventListener('input', updatePromotePromptCount);
+    updatePromotePromptCount();
+  }
+  renderPromotePersonImages();
+  renderPromoteProductImages();
+  const yunwuSection = document.getElementById('promoteYunwuSection');
+  if (yunwuSection) yunwuSection.style.display = 'block';
 }
 
-// ========== 分隔的脚本块 ==========
+// 卖货推送仅云雾，保留空实现供兼容
+function switchPromotePlatform(platform) {
+  if (!platform || platform !== 'yunwu') return;
+  if (typeof selectedPromotePlatform !== 'undefined') selectedPromotePlatform = 'yunwu';
+  const yunwuSection = document.getElementById('promoteYunwuSection');
+  if (yunwuSection) yunwuSection.style.display = 'block';
+}
 
-// 检查登录
-const user = JSON.parse(sessionStorage.getItem('user'));
-if (!user) window.location.href = '/';
+function updatePromotePlatformUI(platform) {
+  if (platform !== 'yunwu') return;
+  const yunwuSection = document.getElementById('promoteYunwuSection');
+  if (yunwuSection) yunwuSection.style.display = 'block';
+}
 
-// 全局变量
-    let currentPlatform = 'heygen';
-    let selectedAvatar = '👩‍💼';
-    let selectedAvatarId = null; // 选中的 HeyGen avatar ID
-    let selectedAvatarForRecite = null;   // HeyGen: avatar_id；云雾: 不用于请求，仅与 digitalHumanId 配合
-    let selectedAvatarForPromote = null;
-    let selectedRecitePlatform = null;    // 'heygen' | 'yunwu'
-    let selectedReciteDigitalHumanId = null;
-    let selectedPromotePlatform = null;
-    let selectedPromoteDigitalHumanId = null;
-    let reciteAudioBase64Yunwu = null;    // 云雾诵读时上传的音频 Base64
-    let promoteAudioBase64Yunwu = null;    // 云雾卖货时上传的音频 Base64
-    let heygenAvatarsCache = null; // 缓存的 avatar 列表
-    let heygenVoicesCache = null; // 缓存的语音列表
-    let selectedVoiceId = null; // 选中的语音ID
-    let currentAvatarMode = 'template'; // 当前选择的形象模式：'template', 'upload', 'record'
-    let selectedTemplatePreviewVideo = null; // 模板模式下步骤3展示用的预览视频 URL
-    let selectedTemplatePreviewImage = null; // 模板模式下步骤3展示用的预览图片 URL
-    let selectedTemplateName = null; // 选中的模板名称
-    
-    // 资源类型和分页相关变量
-    let currentResourceType = 'video'; // 固定为视频类型
-    let currentPage = 1;
-    let pageSize = 30; // 每页显示的数量
-    let totalAvatars = 0;
-    let displayedAvatars = 0;
-    let digitalHumanType = 'video'; // 视频数字人
-    let currentAudioUrl = null;
-    let currentAudioBlob = null;
-    let audioContext = null;
-    
-    // 录制相关变量
-    let videoStream = null;
-    let audioStream = null;
-    let videoRecorder = null;
-    let audioRecorder = null;
-    let recordedVideoBlob = null;
-    let recordedAudioBlob = null;
-    let currentVideoUrl = null;
-    let isRecordingVideo = false;
-    let isRecordingAudio = false;
-    let recordStartTime = null;
-    let recordTimer = null;
-    
-    // 当前步骤
-    let currentStep = 1;
-    let uploadedMaterials = [];
-    let selectedVideoFile = null;
-    let selectedAudioFile = null;
-    let selectedVideoUrl = null;
-    let extractedFrames = [];
-    let selectedFrameId = null;
-    
-    // 任务轮询状态管理
-    const taskPollingIntervals = new Map();
-    
-    // 加载诵读文案面板（仅使用已创建的数字人进行二次创作）
-    function loadRecitePanel() {
-      loadReciteAvatars();
-      loadCachedVoicesForContext('recite');
-      // 绑定字数统计
-      const scriptInput = document.getElementById('reciteScript');
-      if (scriptInput) {
-        scriptInput.addEventListener('input', updateReciteCharCount);
-        updateReciteCharCount();
-      }
-    }
-    
-    // 加载卖货推送面板（仅使用已创建的数字人进行二次创作）
-    function loadPromotePanel() {
-      loadPromoteAvatars();
-      loadCachedVoicesForContext('promote');
-      // 绑定字数统计
-      const descInput = document.getElementById('promoteProductDesc');
-      if (descInput) {
-        descInput.addEventListener('input', updatePromoteCharCount);
-        updatePromoteCharCount();
-      }
-    }
+// 暴露函数到window对象，供HTML调用（确保在全局作用域）
+if (typeof window !== 'undefined') {
+  window.switchPromotePlatform = switchPromotePlatform;
+  // recite: loadRecitePanel/switchRecitePlatform/updateRecitePlatformUI/updateReciteCharCountYunwu 由 modules/recite.js 暴露
+  // ✅ 暴露新流程函数到全局
+  window.switchReciteAudioMode = switchReciteAudioMode;
+  window.handleReciteAudioUpload = handleReciteAudioUpload;
+  window.previewReciteVoice = previewReciteVoice;
+  window.showReciteAudioTemplates = showReciteAudioTemplates;
+  window.hideReciteAudioTemplates = hideReciteAudioTemplates;
+  window.selectReciteAudioTemplate = selectReciteAudioTemplate;
+  window.clearReciteSelectedAudio = clearReciteSelectedAudio;
+  window.handleReciteVideoUpload = handleReciteVideoUpload;
+  window.clearReciteSelectedVideo = clearReciteSelectedVideo;
+  window.showReciteVideoHistory = showReciteVideoHistory;
+  window.showReciteAudioHistory = showReciteAudioHistory;
+  window.openReciteSelectDigitalHumanModal = openReciteSelectDigitalHumanModal;
+  window.closeReciteSelectDigitalHumanModal = closeReciteSelectDigitalHumanModal;
+  window.openReciteTTSModal = openReciteTTSModal;
+  window.closeReciteTTSModal = closeReciteTTSModal;
+  window.toggleReciteSliderDropdown = toggleReciteSliderDropdown;
+  window.initReciteBottomBarSliders = initReciteBottomBarSliders;
+  window.reciteGenerateAudio = reciteGenerateAudio;
+  window.reciteUseGeneratedAudio = reciteUseGeneratedAudio;
+  window.reciteGenerateVideo = reciteGenerateVideo;
+  window.initReciteVideoInputs = initReciteVideoInputs;
+  window.selectMyDigitalHumanByElement = selectMyDigitalHumanByElement;
+  window.loadPromotePanel = loadPromotePanel;
+}
     
     // 初始化
+    // 作品管理视图状态
+    let dhWorksViewMode = localStorage.getItem('dh_works_view_mode') || 'list'; // 'tile' | 'list'
+    let dhWorksShowFavorites = false;
+    let dhWorksFilter = ''; // '' | 'digital' | 'works'
+    
     function init() {
       loadConfigs();
       loadHistory();
@@ -228,12 +77,55 @@ if (!user) window.location.href = '/';
       loadWorks();
       updateStepIndicator(1);
       
-      // 自动加载 avatar 模板（如果 API Key 已配置）
-      const apiKey = getHeyGenApiKey();
-      if (apiKey) {
-        setTimeout(() => {
-          loadHeyGenAvatars('create');
-        }, 500);
+      // 初始化作品管理视图切换和收藏功能
+      initWorksViewToggle();
+      initWorksFilter();
+      
+      // 初始化时设置默认筛选（全部）
+      const allFilterBtn = document.getElementById('dhWorksFilterAll');
+      if (allFilterBtn) {
+        allFilterBtn.classList.add('active');
+      }
+      
+      // 绑定左侧菜单：点击切换中间栏（创建数字人 / 诵读文案 / 卖货推送）
+      const nav = document.getElementById('dhNav');
+      if (nav) {
+        nav.querySelectorAll('.studio-nav-item').forEach(function (item) {
+          item.addEventListener('click', function () {
+            const menu = item.getAttribute('data-menu');
+            if (!menu) return;
+            document.querySelectorAll('.studio-nav-item').forEach(function (n) { n.classList.remove('active'); });
+            item.classList.add('active');
+            const createPanel = document.getElementById('createPanel');
+            const recitePanel = document.getElementById('recitePanel');
+            const promotePanel = document.getElementById('promotePanel');
+            [createPanel, recitePanel, promotePanel].forEach(function (el) {
+              if (el) el.classList.add('hidden');
+            });
+            if (menu === 'create' && createPanel) {
+              createPanel.classList.remove('hidden');
+            } else if (menu === 'recite' && recitePanel) {
+              recitePanel.classList.remove('hidden');
+              if (typeof window.loadRecitePanel === 'function') window.loadRecitePanel();
+            } else if (menu === 'promote' && promotePanel) {
+              promotePanel.classList.remove('hidden');
+              if (typeof window.loadPromotePanel === 'function') window.loadPromotePanel();
+            }
+          });
+        });
+      }
+      
+      // ✅ 不再自动加载 avatar 模板，只有点击刷新按钮才会加载
+      // 显示初始提示状态
+      const container = document.getElementById('avatarTemplateGrid');
+      const loadingState = document.getElementById('avatarLoadingState');
+      if (container && loadingState) {
+        loadingState.style.display = 'block';
+        loadingState.innerHTML = `
+          <div style="font-size: 2rem; margin-bottom: 12px;">👆</div>
+          <div style="font-size: 0.9rem; margin-bottom: 8px;">点击右上角"刷新模板"按钮加载数字人模板</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请确保已配置并测试 HeyGen API Key</div>
+        `;
       }
 
       // 绑定平台标签切换（HeyGen / 云雾数字人）
@@ -374,52 +266,6 @@ if (!user) window.location.href = '/';
           line.classList.remove('completed');
         }
       });
-    }
-    
-    // 获取 HeyGen API Key 的辅助函数
-    function getHeyGenApiKey() {
-      // 优先从输入框读取
-      const inputEl = document.getElementById('heygenApiKey');
-      if (inputEl) {
-        const inputValue = inputEl.value.trim();
-        if (inputValue && inputValue.length > 10) {
-          return inputValue;
-        }
-      }
-      
-      // 从 localStorage 读取
-      try {
-        const apiKey = localStorage.getItem('heygen_api_key');
-        if (apiKey && apiKey.trim().length > 10) {
-          return apiKey.trim();
-        }
-      } catch (e) {
-        console.warn('无法从 localStorage 读取:', e);
-      }
-      
-      return null;
-    }
-
-    // 获取 云雾 API Key 的辅助函数
-    function getYunwuApiKey() {
-      const inputEl = document.getElementById('yunwuApiKey');
-      if (inputEl) {
-        const inputValue = inputEl.value.trim();
-        if (inputValue && inputValue.length > 10) {
-          return inputValue;
-        }
-      }
-      
-      try {
-        const apiKey = localStorage.getItem('yunwu_api_key');
-        if (apiKey && apiKey.trim().length > 10) {
-          return apiKey.trim();
-        }
-      } catch (e) {
-        console.warn('无法从 localStorage 读取云雾 API Key:', e);
-      }
-      
-      return null;
     }
     
     function validateCurrentStep() {
@@ -710,7 +556,37 @@ if (!user) window.location.href = '/';
       }
     }
     
-    function handleVideoFile(file) {
+    // ✅ 上传视频文件为URL（使用FormData，不再使用Base64）
+    async function uploadVideoFile(file) {
+      try {
+        showLoading(true, '正在上传视频文件...');
+        
+        // 使用FormData上传文件
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(buildApiUrl('/api/upload-temp-asset'), {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        showLoading(false);
+        
+        if (result.success && result.url) {
+          console.log('✅ 视频已上传为URL:', result.url);
+          return result.url;
+        } else {
+          throw new Error(result.message || '上传失败');
+        }
+      } catch (error) {
+        showLoading(false);
+        console.error('视频上传失败:', error);
+        throw error;
+      }
+    }
+
+    async function handleVideoFile(file) {
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
       if (!isVideo && !isImage) {
@@ -735,8 +611,22 @@ if (!user) window.location.href = '/';
       clearRecordedFiles();
 
       selectedVideoFile = file;
-      const url = URL.createObjectURL(file);
-      selectedVideoUrl = url;
+      
+      // ✅ 视频文件：上传为URL，不再使用Base64
+      if (isVideo) {
+        try {
+          const uploadedUrl = await uploadVideoFile(file);
+          selectedVideoUrl = uploadedUrl;
+          console.log('视频文件已上传为URL:', uploadedUrl);
+        } catch (error) {
+          alert('视频上传失败：' + error.message + '\n\n将使用本地预览URL');
+          // 如果上传失败，使用本地预览URL作为后备
+          selectedVideoUrl = URL.createObjectURL(file);
+        }
+      } else {
+        // 图片文件：继续使用本地预览URL
+        selectedVideoUrl = URL.createObjectURL(file);
+      }
 
       const previewSection = document.getElementById('videoPreviewSection');
       const videoPreview = document.getElementById('uploadedVideoPreview');
@@ -751,14 +641,14 @@ if (!user) window.location.href = '/';
         videoPreview.src = '';
         videoPreview.style.display = 'none';
         if (imagePreview) {
-          imagePreview.src = url;
+          imagePreview.src = selectedVideoUrl;
           imagePreview.style.display = 'block';
         }
         if (durationEl) durationEl.textContent = '-';
       } else {
         if (imagePreview) imagePreview.style.display = 'none';
         videoPreview.style.display = 'block';
-        videoPreview.src = url;
+        videoPreview.src = selectedVideoUrl;
         videoPreview.onloadedmetadata = () => {
           const d = videoPreview.duration;
           const m = Math.floor(d / 60);
@@ -789,7 +679,57 @@ if (!user) window.location.href = '/';
       }
     }
     
-    function handleAudioFile(file) {
+    // ✅ 上传音频文件为URL（不再使用Base64）
+    async function uploadAudioFile(file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(buildApiUrl('/api/upload-temp-asset'), {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+          console.log('✅ 音频已上传为URL:', result.url);
+          return result.url;
+        } else {
+          throw new Error(result.message || '上传失败');
+        }
+      } catch (error) {
+        console.error('音频上传失败:', error);
+        throw error;
+      }
+    }
+    
+    // ✅ 上传图片文件为URL（不再使用Base64）
+    async function uploadImageFile(file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(buildApiUrl('/api/upload-temp-asset'), {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+          console.log('✅ 图片已上传为URL:', result.url);
+          return result.url;
+        } else {
+          throw new Error(result.message || '上传失败');
+        }
+      } catch (error) {
+        console.error('图片上传失败:', error);
+        throw error;
+      }
+    }
+    
+    async function handleAudioFile(file) {
       if (!file.type.startsWith('audio/')) {
         alert('请选择音频文件');
         return;
@@ -817,19 +757,34 @@ if (!user) window.location.href = '/';
       clearTemplateSelection();
       clearRecordedFiles();
       
-      selectedAudioFile = file;
-      
-      const audioPreview = document.getElementById('uploadedAudioPreview');
-      const fileName = document.getElementById('audioFileName');
-      const fileSize = document.getElementById('audioFileSize');
-      const previewSection = document.getElementById('audioPreviewSection');
-      
-      if (audioPreview && fileName && fileSize) {
-        const url = URL.createObjectURL(file);
-        audioPreview.src = url;
-        fileName.textContent = file.name;
-        fileSize.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-        previewSection.style.display = 'block';
+      // ✅ 直接上传为URL，不转换为Base64
+      try {
+        showLoading(true, '正在上传音频文件...');
+        const audioUrl = await uploadAudioFile(file);
+        
+        // 存储URL而不是文件对象
+        selectedAudioFile = file; // 保留文件对象用于预览
+        reciteAudioBase64Yunwu = audioUrl; // 存储URL
+        promoteAudioBase64Yunwu = audioUrl; // 存储URL
+        
+        const audioPreview = document.getElementById('uploadedAudioPreview');
+        const fileName = document.getElementById('audioFileName');
+        const fileSize = document.getElementById('audioFileSize');
+        const previewSection = document.getElementById('audioPreviewSection');
+        
+        if (audioPreview && fileName && fileSize) {
+          const url = URL.createObjectURL(file);
+          audioPreview.src = url;
+          fileName.textContent = file.name;
+          fileSize.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+          previewSection.style.display = 'block';
+        }
+        
+        showLoading(false);
+        console.log('✅ 音频文件已上传为URL:', audioUrl);
+      } catch (error) {
+        showLoading(false);
+        alert('❌ 音频上传失败：' + error.message);
       }
     }
     
@@ -1355,283 +1310,6 @@ if (!user) window.location.href = '/';
       }
     }
     
-    // ========== API Key 管理 ==========
-
-// 获取 HeyGen API Key
-function getHeyGenApiKey() {
-  // 先从localStorage获取
-  let apiKey = localStorage.getItem('heygen_api_key');
-  
-  // 如果没有，尝试从输入框获取
-  if (!apiKey) {
-    const input = document.getElementById('heygenApiKey');
-    if (input && input.value) {
-      apiKey = input.value;
-      // 保存到localStorage
-      localStorage.setItem('heygen_api_key', apiKey);
-    }
-  }
-  
-  return apiKey;
-}
-
-// ========== 统一的错误处理函数 ==========
-
-/**
- * 检测错误响应是否为Token类型错误（mistake类型）
- * @param {Object} errorData - 错误响应数据
- * @returns {boolean} - 是否为Token类型错误
- */
-function isTokenTypeErrorResponse(errorData) {
-  if (!errorData) return false;
-  
-  // 检查错误代码
-  if (errorData.errorCode === 'TOKEN_TYPE_ERROR' || errorData.error === 'TOKEN_TYPE_ERROR') {
-    return true;
-  }
-  
-  // 检查错误消息
-  const errorMessage = errorData.message || '';
-  if (!errorMessage) return false;
-  
-  const errorMsgLower = errorMessage.toLowerCase();
-  const tokenTypeErrorPatterns = [
-    /token.*type.*mistake/i,
-    /type.*mistake.*token/i,
-    /令牌类型.*mistake/i,
-    /mistake.*token.*type/i,
-    /TOKEN_TYPE_ERROR/i,
-    /类型错误.*token/i,
-    /token.*type.*错误/i,
-    /令牌类型.*错误/i
-  ];
-  
-  return tokenTypeErrorPatterns.some(pattern => pattern.test(errorMsgLower));
-}
-
-/**
- * 检测错误响应是否为配额不足错误
- * @param {Object} errorData - 错误响应数据
- * @returns {boolean} - 是否为配额不足错误
- */
-function isQuotaErrorResponse(errorData) {
-  if (!errorData) return false;
-  
-  // 检查错误代码
-  if (errorData.errorCode === 'QUOTA_INSUFFICIENT' || errorData.error === 'QUOTA_INSUFFICIENT') {
-    return true;
-  }
-  
-  // 检查错误消息
-  const errorMessage = errorData.message || '';
-  if (!errorMessage) return false;
-  
-  const errorMsgLower = errorMessage.toLowerCase();
-  return /配额不足|余额不足|quota.*insufficient|insufficient.*quota|余额.*不足/i.test(errorMsgLower);
-}
-
-/**
- * 处理Token类型错误
- * @param {Object} errorData - 错误响应数据
- */
-function handleTokenTypeError(errorData) {
-  const tokenErrorMessage = errorData?.message || 'API令牌类型错误';
-  const helpUrl = errorData?.helpUrl || 'https://yunwu.ai/token';
-  
-  alert(tokenErrorMessage);
-  
-  if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否现在打开令牌管理页面修复Token类型？')) {
-    window.open(helpUrl, '_blank');
-  }
-}
-
-/**
- * 处理配额不足错误
- * @param {Object} errorData - 错误响应数据
- */
-function handleQuotaError(errorData) {
-  const quotaMessage = errorData?.message || '账号配额不足';
-  const suggestCheckToken = errorData?.suggestCheckToken || 
-                           quotaMessage.includes('Token类型') || 
-                           quotaMessage.includes('mistake');
-  const helpUrl = suggestCheckToken 
-    ? (errorData?.helpUrl || 'https://yunwu.ai/token')
-    : (errorData?.helpUrl || 'https://yunwu.ai/topup');
-  
-  alert(quotaMessage);
-  
-  if (suggestCheckToken) {
-    if (confirm('⚠️ 这很可能是Token类型问题导致的！\n\n是否现在打开令牌管理页面检查Token类型？')) {
-      window.open(helpUrl, '_blank');
-    }
-  } else {
-    if (confirm('是否现在打开充值页面？')) {
-      window.open(helpUrl, '_blank');
-    }
-  }
-}
-
-/**
- * 统一处理API错误响应
- * @param {Object} errorData - 错误响应数据
- * @param {Function} onOtherError - 处理其他错误的回调函数
- */
-function handleApiError(errorData, onOtherError) {
-  if (isTokenTypeErrorResponse(errorData)) {
-    handleTokenTypeError(errorData);
-  } else if (isQuotaErrorResponse(errorData)) {
-    handleQuotaError(errorData);
-  } else if (onOtherError) {
-    onOtherError(errorData);
-  } else {
-    alert('❌ 操作失败：' + (errorData?.message || '未知错误'));
-  }
-}
-
-// 获取云雾 API Key
-function getYunwuApiKey() {
-  // 先从localStorage获取
-  let apiKey = localStorage.getItem('yunwu_api_key');
-  
-  // 如果没有，尝试从输入框获取
-  if (!apiKey) {
-    const input = document.getElementById('yunwuApiKey');
-    if (input && input.value) {
-      apiKey = input.value;
-      // 保存到localStorage
-      localStorage.setItem('yunwu_api_key', apiKey);
-    }
-  }
-  
-  return apiKey;
-}
-
-// 保存 HeyGen API Key
-function saveHeyGenConfig() {
-  const apiKey = document.getElementById('heygenApiKey').value.trim();
-  if (!apiKey) {
-    alert('请填写 HeyGen API Key');
-    return;
-  }
-  
-  // ✅ 保存到localStorage
-  try {
-    localStorage.setItem('heygen_api_key', apiKey);
-    showStatus('heygenStatus', '✅ API Key 保存成功！已保存到本地，下次打开页面将自动加载。', 'success');
-    console.log('HeyGen API Key 已保存到 localStorage');
-  } catch (e) {
-    console.error('保存 HeyGen API Key 失败:', e);
-    showStatus('heygenStatus', '❌ 保存失败：' + e.message, 'error');
-    return;
-  }
-  
-  // 自动测试连接
-  setTimeout(() => testHeyGenApi(), 500);
-}
-
-
-// 保存云雾 API Key（增强版，包含预防性检查）
-async function saveYunwuConfig() {
-  const apiKey = document.getElementById('yunwuApiKey')?.value.trim();
-  if (!apiKey) {
-    alert('请填写云雾 API Key');
-    return;
-  }
-  
-  // 基本格式验证
-  if (apiKey.length < 10 || apiKey.length > 200) {
-    showStatus('yunwuStatus', '❌ API Key 格式不正确（长度应在10-200字符之间）', 'error');
-    return;
-  }
-  
-  // 检查是否是之前保存的Token（避免重复验证）
-  const savedKey = localStorage.getItem('yunwu_api_key');
-  const wasTested = localStorage.getItem('yunwu_api_tested') === 'true';
-  
-  // 如果是新Token或之前未测试过，自动进行验证
-  if (apiKey !== savedKey || !wasTested) {
-    showStatus('yunwuStatus', '⏳ 正在验证Token配置（防止type为"mistake"）...', 'warning');
-    
-    try {
-      // 自动调用测试接口进行验证
-      const response = await fetch(buildApiUrl('/api/yunwu/test'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey })
-      });
-      
-      const contentType = response.headers.get('content-type') || '';
-      let result;
-      
-      if (contentType.includes('application/json')) {
-        result = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('验证接口返回非JSON响应:', text.substring(0, 200));
-        throw new Error('验证接口返回了非 JSON 格式的响应');
-      }
-      
-      if (result.success) {
-        // 验证通过，保存Token
-        try {
-          localStorage.setItem('yunwu_api_key', apiKey);
-          localStorage.setItem('yunwu_api_tested', 'true');
-          localStorage.setItem('yunwu_api_test_time', new Date().toISOString());
-          showStatus('yunwuStatus', '✅ Token验证通过！配置已保存（Token类型正常，可以正常使用）', 'success');
-          console.log('云雾 API Key 已保存到 localStorage（已验证）');
-        } catch (e) {
-          console.error('保存云雾 API Key 失败:', e);
-          showStatus('yunwuStatus', '❌ 验证通过但保存失败：' + e.message, 'error');
-          return;
-        }
-      } else {
-        // 验证失败，检查是否是Token类型错误
-        if (isTokenTypeErrorResponse(result)) {
-          showStatus('yunwuStatus', '❌ Token类型错误（type为"mistake"）', 'error');
-          handleTokenTypeError(result);
-          
-          // 不保存错误的Token
-          return;
-        } else {
-          // 其他错误，仍然保存但提示用户
-          try {
-            localStorage.setItem('yunwu_api_key', apiKey);
-            localStorage.removeItem('yunwu_api_tested');
-            showStatus('yunwuStatus', '⚠️ Token已保存，但验证失败：' + (result.message || '未知错误') + '\n\n建议：点击"测试连接"进行详细检查', 'warning');
-            console.log('云雾 API Key 已保存（但验证失败）');
-          } catch (e) {
-            console.error('保存云雾 API Key 失败:', e);
-            showStatus('yunwuStatus', '❌ 验证失败且无法保存：' + (result.message || '未知错误'), 'error');
-            return;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('自动验证Token错误:', error);
-      // 验证失败，但仍然保存（可能是网络问题）
-      try {
-        localStorage.setItem('yunwu_api_key', apiKey);
-        showStatus('yunwuStatus', '⚠️ Token已保存，但自动验证失败（可能是网络问题）\n\n强烈建议：点击"测试连接"按钮进行验证，确保Token类型正确', 'warning');
-        console.log('云雾 API Key 已保存（但自动验证失败）');
-      } catch (e) {
-        console.error('保存云雾 API Key 失败:', e);
-        showStatus('yunwuStatus', '❌ 无法保存Token：' + error.message, 'error');
-        return;
-      }
-    }
-  } else {
-    // 已测试过的Token，直接保存
-    try {
-      localStorage.setItem('yunwu_api_key', apiKey);
-      showStatus('yunwuStatus', '✅ API Key 保存成功！已保存到本地，下次打开页面将自动加载。', 'success');
-      console.log('云雾 API Key 已保存到 localStorage（之前已验证）');
-    } catch (e) {
-      console.error('保存云雾 API Key 失败:', e);
-      showStatus('yunwuStatus', '❌ 保存失败：' + e.message, 'error');
-      return;
-    }
-  }
-}
     // ========== 创建数字人（修改版） ==========
     
     async function createDigitalHuman() {
@@ -1649,7 +1327,9 @@ async function saveYunwuConfig() {
         await createHeyGenDigitalHuman(name, desc, script);
         return;
       } else if (currentPlatform === 'yunwu') {
-        await createYunwuDigitalHuman(name, desc, script);
+        const modeEl = document.getElementById('videoModeSelect');
+        const mode = (modeEl && modeEl.value) ? modeEl.value : 'std';
+        await createYunwuDigitalHuman(name, desc, script, mode);
         return;
       }
       
@@ -1714,13 +1394,11 @@ async function saveYunwuConfig() {
         // ✅ 修复：正确的API请求格式
         const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, (window.getAuthHeaders && window.getAuthHeaders()) || {}),
           body: JSON.stringify({
-            apiKey: apiKey, // 必须的API Key
-            avatarId: avatarId, // 使用的avatar ID
-            text: script, // 用户输入的文案
-            voiceId: voiceId, // 语音ID
-            // 可选参数
+            avatarId: avatarId,
+            text: script,
+            voiceId: voiceId,
             digitalHumanType: 'video',
             name: name,
             description: desc
@@ -1786,11 +1464,38 @@ async function saveYunwuConfig() {
         
         // 获取缩略图
         let thumbnail = null;
+        // ✅ 确保thumbnail是URL格式（不再使用Base64）
         if (selectedTemplatePreviewImage) {
-          thumbnail = selectedTemplatePreviewImage;
+          // 如果是data URL，需要先上传为URL
+          if (selectedTemplatePreviewImage.startsWith('data:')) {
+            try {
+              showLoading(true, '正在上传缩略图...');
+              const response = await fetch(selectedTemplatePreviewImage);
+              const blob = await response.blob();
+              const file = new File([blob], 'template-thumbnail.png', { type: 'image/png' });
+              thumbnail = await uploadImageFile(file);
+            } catch (error) {
+              console.error('缩略图上传失败:', error);
+              thumbnail = selectedTemplatePreviewImage; // 如果上传失败，使用原始data URL
+            }
+          } else {
+            thumbnail = selectedTemplatePreviewImage;
+          }
         } else if (selectedVideoFile && extractedFrames.length > 0) {
           const selectedFrame = extractedFrames.find(f => f.id === selectedFrameId) || extractedFrames[0];
-          thumbnail = selectedFrame ? selectedFrame.dataUrl : null;
+          if (selectedFrame && selectedFrame.dataUrl) {
+            // 如果是data URL，需要先上传为URL
+            try {
+              showLoading(true, '正在上传缩略图...');
+              const response = await fetch(selectedFrame.dataUrl);
+              const blob = await response.blob();
+              const file = new File([blob], 'frame-thumbnail.png', { type: 'image/png' });
+              thumbnail = await uploadImageFile(file);
+            } catch (error) {
+              console.error('缩略图上传失败:', error);
+              thumbnail = selectedFrame.dataUrl; // 如果上传失败，使用原始data URL
+            }
+          }
         }
         
         // 创建数字人记录
@@ -1844,8 +1549,8 @@ async function saveYunwuConfig() {
       }
     }
 
-    // 云雾数字人创建（基于统一数字人创建接口）
-    async function createYunwuDigitalHuman(name, desc, script) {
+    // 云雾数字人创建（基于统一数字人创建接口），mode: std=标准模式 / pro=专家模式
+    async function createYunwuDigitalHuman(name, desc, script, mode) {
       const apiKey = getYunwuApiKey();
 
       if (!apiKey) {
@@ -1863,50 +1568,64 @@ async function saveYunwuConfig() {
       showLoading(true, '正在创建云雾数字人...');
 
       try {
-        // 获取图片URL（需要转换为纯base64格式）
+        // ✅ 获取图片URL（直接上传为URL，不再使用Base64）
         let imageUrl = null;
 
         // 优先使用上传的视频文件中的帧
         if (extractedFrames && extractedFrames.length > 0) {
           const selectedFrame = extractedFrames.find(f => f.id === selectedFrameId) || extractedFrames[0];
           if (selectedFrame && selectedFrame.dataUrl) {
-            // 移除data URL前缀，只保留base64数据
-            imageUrl = selectedFrame.dataUrl.includes(',') ? selectedFrame.dataUrl.split(',')[1] : selectedFrame.dataUrl;
-            console.log('✅ 图片已从视频帧提取，大小:', (imageUrl.length / 1024).toFixed(2), 'KB', '格式: Base64');
+            // ✅ 将data URL转换为Blob，然后上传为URL
+            try {
+              showLoading(true, '正在上传图片...');
+              const response = await fetch(selectedFrame.dataUrl);
+              const blob = await response.blob();
+              const file = new File([blob], 'frame.png', { type: 'image/png' });
+              imageUrl = await uploadImageFile(file);
+              console.log('✅ 图片已从视频帧提取并上传为URL:', imageUrl);
+            } catch (error) {
+              console.error('❌ 图片上传失败:', error);
+              showLoading(false);
+              alert('图片上传失败：' + error.message);
+              return;
+            }
           }
         }
 
         // 如果没有帧缩略图，尝试使用上传的图片文件
         if (!imageUrl && selectedVideoFile) {
-          // 如果上传的是图片文件，直接使用
+          // 如果上传的是图片文件，直接上传为URL
           if (selectedVideoFile.type && selectedVideoFile.type.startsWith('image/')) {
-            console.log('📷 开始转换图片文件为 base64，文件类型:', selectedVideoFile.type, '文件大小:', (selectedVideoFile.size / 1024).toFixed(2), 'KB');
-            imageUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                // 移除data URL前缀，只保留base64数据
-                const dataUrl = reader.result;
-                const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-                console.log('✅ 图片文件已转换为 base64，大小:', (base64.length / 1024).toFixed(2), 'KB', '格式:', selectedVideoFile.type, 'Base64长度:', base64.length);
-                resolve(base64);
-              };
-              reader.onerror = (error) => {
-                console.error('❌ 图片文件转换失败:', error);
-                reject(error);
-              };
-              reader.readAsDataURL(selectedVideoFile);
-            });
+            console.log('📷 开始上传图片文件，文件类型:', selectedVideoFile.type, '文件大小:', (selectedVideoFile.size / 1024).toFixed(2), 'KB');
+            try {
+              showLoading(true, '正在上传图片...');
+              imageUrl = await uploadImageFile(selectedVideoFile);
+              console.log('✅ 图片文件已上传为URL:', imageUrl);
+            } catch (error) {
+              console.error('❌ 图片文件上传失败:', error);
+              showLoading(false);
+              alert('图片上传失败：' + error.message);
+              return;
+            }
           }
         }
 
         // 如果还没有图片，尝试使用模板预览图
         if (!imageUrl && typeof selectedTemplatePreviewImage !== 'undefined' && selectedTemplatePreviewImage) {
-          // 如果模板预览图是data URL，也需要移除前缀
-          const originalLength = selectedTemplatePreviewImage.length;
-          imageUrl = selectedTemplatePreviewImage.includes(',') 
-            ? selectedTemplatePreviewImage.split(',')[1] 
-            : selectedTemplatePreviewImage;
-          console.log('✅ 图片已从模板预览图提取，原始大小:', (originalLength / 1024).toFixed(2), 'KB', 'Base64大小:', (imageUrl.length / 1024).toFixed(2), 'KB');
+          // ✅ 将模板预览图转换为Blob，然后上传为URL
+          try {
+            showLoading(true, '正在上传图片...');
+            const response = await fetch(selectedTemplatePreviewImage);
+            const blob = await response.blob();
+            const file = new File([blob], 'template.png', { type: 'image/png' });
+            imageUrl = await uploadImageFile(file);
+            console.log('✅ 图片已从模板预览图提取并上传为URL:', imageUrl);
+          } catch (error) {
+            console.error('❌ 模板图片上传失败:', error);
+            showLoading(false);
+            alert('图片上传失败：' + error.message);
+            return;
+          }
         }
 
         if (!imageUrl) {
@@ -1916,18 +1635,10 @@ async function saveYunwuConfig() {
           return;
         }
         
-        // 验证图片base64格式
-        if (imageUrl.trim().length === 0) {
-          console.error('❌ 图片验证失败: base64为空');
-          showLoading(false);
-          alert('图片base64编码为空，请重新上传图片。');
-          return;
-        }
-        
-        console.log('✅ 图片准备完成，最终大小:', (imageUrl.length / 1024).toFixed(2), 'KB', 'Base64长度:', imageUrl.length);
+        console.log('✅ 图片准备完成，URL:', imageUrl);
 
-        // 处理音频文件（如果有）
-        let audioFileBase64 = null;
+        // ✅ 处理音频文件（直接上传为URL，不再使用Base64）
+        let audioFileUrl = null;
         if (hasAudio) {
           const audioFile = selectedAudioFile || recordedAudioBlob;
           if (audioFile) {
@@ -1949,50 +1660,13 @@ async function saveYunwuConfig() {
             }
             
             try {
-              audioFileBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  // 提取纯base64数据（移除data URL前缀）
-                  const dataUrl = reader.result;
-                  if (!dataUrl || dataUrl.trim().length === 0) {
-                    reject(new Error('音频文件base64转换失败：结果为空'));
-                    return;
-                  }
-                  
-                  // 提取base64部分
-                  let base64 = dataUrl;
-                  if (dataUrl.includes(',')) {
-                    base64 = dataUrl.split(',')[1];
-                  }
-                  
-                  // 验证base64格式
-                  if (!base64 || base64.trim().length === 0) {
-                    reject(new Error('音频文件base64转换失败：base64数据为空'));
-                    return;
-                  }
-                  
-                  // 清理base64字符串（移除可能的空白字符）
-                  base64 = base64.replace(/[\s\n\r]/g, '');
-                  
-                  // 验证base64字符集
-                  if (!/^[A-Za-z0-9+/=]+$/.test(base64)) {
-                    reject(new Error('音频文件base64格式无效：包含非法字符'));
-                    return;
-                  }
-                  
-                  // 返回完整的data URL（后端会提取纯base64部分）
-                  resolve(dataUrl);
-                };
-                reader.onerror = (error) => {
-                  reject(new Error('读取音频文件失败：' + (error.message || '未知错误')));
-                };
-                reader.readAsDataURL(audioFile);
-              });
-              console.log('音频文件已转换为 base64，大小:', (audioFileBase64.length / 1024 / 1024).toFixed(2), 'MB', '格式:', audioType, 'data URL:', audioFileBase64.substring(0, 50) + '...');
+              showLoading(true, '正在上传音频文件...');
+              audioFileUrl = await uploadAudioFile(audioFile);
+              console.log('✅ 音频文件已上传为URL:', audioFileUrl);
             } catch (error) {
-              console.error('转换音频文件失败:', error);
+              console.error('音频文件上传失败:', error);
               showLoading(false);
-              alert('⚠️ 音频文件转换失败，请重新上传或录制音频文件');
+              alert('音频文件上传失败：' + error.message);
               return;
             }
           }
@@ -2005,30 +1679,28 @@ async function saveYunwuConfig() {
           return;
         }
         
-        if (!audioFileBase64) {
+        if (!audioFileUrl) {
           showLoading(false);
           alert('❌ 缺少必需参数：音频文件\n\n云雾数字人必须提供音频，请：\n1. 在步骤2中上传音频文件\n2. 或使用实时录制功能录制音频');
           return;
         }
         
+        const videoMode = (mode === 'pro' || mode === 'std') ? mode : 'std';
         // 详细记录请求参数
         const requestPayload = {
           provider: 'yunwu',
-          apiKey,
           imageUrl,
           text: script || '数字人视频',
           prompt: script || '数字人视频生成',
-          audioFile: audioFileBase64,
+          audioFile: audioFileUrl,
           name,
           description: desc,
-          mode: 'std'
+          mode: videoMode
         };
         
         console.log('=== 发送创建请求 ===');
         console.log('请求参数摘要:', {
           provider: requestPayload.provider,
-          hasApiKey: !!requestPayload.apiKey,
-          apiKeyLength: requestPayload.apiKey ? requestPayload.apiKey.length : 0,
           hasImageUrl: !!requestPayload.imageUrl,
           imageUrlType: typeof requestPayload.imageUrl,
           imageUrlLength: requestPayload.imageUrl ? String(requestPayload.imageUrl).length : 0,
@@ -2047,7 +1719,7 @@ async function saveYunwuConfig() {
         
         const response = await fetch(buildApiUrl('/api/digital-human/create'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, (window.getAuthHeaders && window.getAuthHeaders()) || {}),
           body: JSON.stringify(requestPayload)
         });
 
@@ -2146,10 +1818,9 @@ async function saveYunwuConfig() {
         console.log('云雾数字人任务创建成功，任务ID:', taskId, altTaskId ? '备用ID: ' + altTaskId : '', '完整响应:', result);
 
         const digitalHumanId = Date.now().toString();
-        // 压缩后保存缩略图，避免 localStorage 过大、请求 431
-        const thumb = (typeof compressImageForStorage === 'function')
-          ? await compressImageForStorage(imageUrl, 640, 0.75)
-          : (imageUrl.indexOf(',') >= 0 ? imageUrl.slice(imageUrl.indexOf(',') + 1) : imageUrl);
+        // ✅ 保存缩略图URL（不再使用Base64）
+        // imageUrl已经是URL格式，直接使用
+        const thumb = imageUrl;
 
         const digitalHuman = {
           id: digitalHumanId,
@@ -2162,7 +1833,7 @@ async function saveYunwuConfig() {
           status: result.status || 'processing',
           progress: 0,
           videoUrl: result.videoUrl || null,
-          thumbnail: thumb || (imageUrl.indexOf(',') >= 0 ? imageUrl.slice(imageUrl.indexOf(',') + 1) : imageUrl),
+          thumbnail: thumb, // ✅ imageUrl已经是URL格式
           hasAudio: hasAudio,
           createDate: new Date().toISOString(),
           updateDate: new Date().toISOString()
@@ -2201,12 +1872,13 @@ async function saveYunwuConfig() {
       }
 
       const taskUrl = () => {
-        let url = buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        let url = buildApiUrl(`/api/digital-human/task/${provider}/${taskId}`);
         if (provider === 'yunwu' && altId && String(altId).trim() !== String(taskId)) {
-          url += '&altId=' + encodeURIComponent(String(altId).trim());
+          url += '?altId=' + encodeURIComponent(String(altId).trim());
         }
         return url;
       };
+      const authHeaders = (window.getAuthHeaders && window.getAuthHeaders()) || {};
       
       let pollCount = 0;
       const maxPolls = 60;
@@ -2232,7 +1904,7 @@ async function saveYunwuConfig() {
         }
 
         try {
-          const response = await fetch(taskUrl());
+          const response = await fetch(taskUrl(), { headers: authHeaders });
 
           const contentType = response.headers.get('content-type') || '';
           let result;
@@ -2348,9 +2020,9 @@ async function saveYunwuConfig() {
 
     function normalizeTaskStatus(status) {
       const s = (status || '').toString().toLowerCase();
-      if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(s)) return 'completed';
+      if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(s)) return 'done';
       if (['fail', 'failed', 'error'].includes(s)) return 'failed';
-      return status || 'processing';
+      return 'processing';
     }
 
     function renderTaskIdQueryStatus(text, type = 'info') {
@@ -2374,227 +2046,316 @@ async function saveYunwuConfig() {
         .replace(/'/g, '&#39;');
     }
 
-    function renderTaskIdQueryResult(result) {
-      const container = document.getElementById('taskIdQueryResult');
-      if (!container) return;
-
-      if (!result) {
-        container.innerHTML = '';
-        return;
-      }
-
-      const status = normalizeTaskStatus(result.status);
-      const progress = result.progress || 0;
-      const videoUrl = result.videoUrl || result.data?.video_url || result.data?.url || '';
-      const message = result.message || result.error || '';
-
-      let html = `
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
-          <div style="display:flex; justify-content: space-between; gap: 12px; align-items:center;">
-            <div style="font-weight: 700;">状态：${status}</div>
-            <div style="color: var(--text-secondary); font-size: 0.9rem;">进度：${progress || 0}</div>
-          </div>
-      `;
-
-      if (message && status !== 'completed') {
-        html += `<div style="margin-top: 8px; color: var(--text-secondary); white-space: pre-wrap;">${escapeHtml(message)}</div>`;
-      }
-
-      if (videoUrl) {
-        html += `
-          <div style="margin-top: 12px;">
-            <div style="font-weight: 700; margin-bottom: 8px;">🎬 视频结果</div>
-            <video controls style="width: 100%; border-radius: 12px; background: #000;" src="${videoUrl}"></video>
-            <div style="margin-top: 8px; display:flex; gap: 10px; flex-wrap: wrap;">
-              <a class="btn secondary" href="${videoUrl}" target="_blank" rel="noopener" style="text-decoration:none; padding: 10px 14px;">🔗 打开链接</a>
-              <a class="btn primary" href="${videoUrl}" download style="text-decoration:none; padding: 10px 14px;">⬇️ 下载视频</a>
-            </div>
-            <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem; word-break: break-all;">${videoUrl}</div>
-          </div>
-        `;
-      }
-
-      html += `</div>`;
-      container.innerHTML = html;
-    }
-
-    function stopTaskIdQueryPolling() {
-      try {
-        const providerEl = document.getElementById('taskIdQueryProvider');
-        const taskIdEl = document.getElementById('taskIdQueryInput');
-        const provider = providerEl ? providerEl.value : 'yunwu';
-        const taskId = taskIdEl ? taskIdEl.value.trim() : '';
-        const key = `${taskIdQueryKeyPrefix}${provider}_${taskId || 'current'}`;
-        if (taskPollingIntervals.has(key)) {
-          clearInterval(taskPollingIntervals.get(key));
-          taskPollingIntervals.delete(key);
-        }
-      } catch {}
-      renderTaskIdQueryStatus('已停止查询', 'warning');
-    }
-
-    async function startTaskIdQueryPolling() {
-      const providerEl = document.getElementById('taskIdQueryProvider');
-      const taskIdEl = document.getElementById('taskIdQueryInput');
-      const provider = providerEl ? providerEl.value : 'yunwu';
-      const taskId = taskIdEl ? taskIdEl.value.trim() : '';
-
-      if (!taskId) {
-        renderTaskIdQueryStatus('请输入任务ID', 'error');
-        return;
-      }
-
-      // 读取对应API Key
-      const apiKey = provider === 'yunwu' ? getYunwuApiKey() : getHeyGenApiKey();
-      if (!apiKey) {
-        renderTaskIdQueryStatus(`未检测到 ${provider === 'yunwu' ? '云雾' : 'HeyGen'} API Key，请先在“创建数字人”页面配置并保存`, 'error');
-        return;
-      }
-
-      const key = `${taskIdQueryKeyPrefix}${provider}_${taskId}`;
-      // 如果已有轮询，先清除
-      if (taskPollingIntervals.has(key)) {
-        clearInterval(taskPollingIntervals.get(key));
-        taskPollingIntervals.delete(key);
-      }
-
-      renderTaskIdQueryResult(null);
-      renderTaskIdQueryStatus(`开始查询：${provider}/${taskId}（每10秒一次，最长10分钟）`, 'info');
-
-      const pollIntervalMs = 10000;
-      const maxPolls = 60; // 10分钟
-      let pollCount = 0;
-
-      const pollInterval = setInterval(async () => {
-        pollCount++;
-
-        if (pollCount > maxPolls) {
-          clearInterval(pollInterval);
-          taskPollingIntervals.delete(key);
-          renderTaskIdQueryStatus('查询超时（10分钟仍未完成），已判定失败', 'error');
-          renderTaskIdQueryResult({ success: false, status: 'failed', message: '查询超时（10分钟）' });
-          return;
-        }
-
-        try {
-          const resp = await fetch(buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`));
-          const contentType = resp.headers.get('content-type') || '';
-          let result;
-          if (contentType.includes('application/json')) {
-            result = await resp.json();
-          } else {
-            const text = await resp.text();
-            renderTaskIdQueryStatus(`服务器返回非JSON响应 (HTTP ${resp.status})`, 'error');
-            renderTaskIdQueryResult({ success: false, status: 'failed', message: text.substring(0, 200) });
-            return;
-          }
-
-          if (!result.success) {
-            // 继续轮询，但展示最新错误
-            renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：${result.message || '查询失败'}`, 'warning');
-            renderTaskIdQueryResult({ ...result, status: 'processing' });
-            return;
-          }
-
-          const status = normalizeTaskStatus(result.status);
-          renderTaskIdQueryResult(result);
-          renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：状态=${status}${result.progress ? `，进度=${result.progress}` : ''}`, 'info');
-
-          if (status === 'completed') {
-            clearInterval(pollInterval);
-            taskPollingIntervals.delete(key);
-            renderTaskIdQueryStatus('✅ 查询成功：任务已完成', 'success');
-          } else if (status === 'failed') {
-            clearInterval(pollInterval);
-            taskPollingIntervals.delete(key);
-            renderTaskIdQueryStatus('❌ 查询失败：任务失败', 'error');
-          }
-        } catch (e) {
-          renderTaskIdQueryStatus('查询异常：' + (e && e.message ? e.message : String(e)), 'warning');
-        }
-      }, pollIntervalMs);
-      taskPollingIntervals.set(key, pollInterval);
-    }
-
-    // 更新任务状态
-    function updateTaskStatus(digitalHumanId, status, progress, videoUrl, error) {
-      const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
-      const index = digitalHumans.findIndex(dh => dh.id === digitalHumanId);
-      
-      if (index !== -1) {
-        const oldStatus = digitalHumans[index].status;
-        digitalHumans[index].status = status;
-        digitalHumans[index].progress = progress;
-        digitalHumans[index].updateDate = new Date().toISOString();
-        
-        if (videoUrl) {
-          digitalHumans[index].videoUrl = videoUrl;
-        }
-        
-        // 保存错误信息（如果有）
-        if (error) {
-          digitalHumans[index].error = error;
-        } else if (status === 'failed' && !digitalHumans[index].error) {
-          // 如果状态是失败但没有错误信息，设置默认错误信息
-          digitalHumans[index].error = '任务失败，原因未知';
-        }
-        
-        localStorage.setItem('digital_humans', JSON.stringify(digitalHumans));
-        
-        // 如果正在查看数字人管理页面，刷新显示
-        if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
-          loadDigitalHumans();
-        }
-        
-        // 记录状态变化
-        if (oldStatus !== status) {
-          console.log('任务状态更新:', { digitalHumanId, oldStatus, newStatus: status, error });
-        }
-      }
-    }
+    // 递归收集视频URL（参考AI创作工坊）
+    // function collectTaskIdQueryVideoUrls(obj, out) {
+    //   if (!obj || typeof obj !== 'object') return;
+    //   if (Array.isArray(obj)) {
+    //     obj.forEach(function (x) {
+    //       if (typeof x === 'string' && /^https?:\/\//i.test(x) && /\.(mp4|webm|mov|avi)(\?|#|$)/i.test(x)) {
+    //         out.push(x);
+    //       } else if (x && typeof x === 'object' && x.url && /\.(mp4|webm|mov|avi)(\?|#|$)/i.test(x.url)) {
+    //         out.push(x.url);
+    //       } else if (x && typeof x === 'object') {
+    //         collectTaskIdQueryVideoUrls(x, out);
+    //       }
+    //     });
+    //     return;
+    //   }
+    //   const urlKeys = ['video', 'url', 'videos', 'video_url', 'output_video', 'result_url', 'output_url', 'videoUrl', 'video_file', 'output_file'];
+    //   urlKeys.forEach(function (k) {
+    //     const v = obj[k];
+    //     if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+    //       // 检查是否是视频URL
+    //       if (/\.(mp4|webm|mov|avi)(\?|#|$)/i.test(v)) {
+    //         out.push(v);
+    //       } else if (k === 'result_url' || k === 'url') {
+    //         // result_url 和 url 可能是视频，先加入
+    //         out.push(v);
+    //       }
+    //     } else if (Array.isArray(v)) {
+    //       v.forEach(function (u) {
+    //         if (typeof u === 'string' && /^https?:\/\//i.test(u) && /\.(mp4|webm|mov|avi)(\?|#|$)/i.test(u)) {
+    //           out.push(u);
+    //         } else if (u && u.url && /\.(mp4|webm|mov|avi)(\?|#|$)/i.test(u.url)) {
+    //           out.push(u.url);
+    //         } else if (u && typeof u === 'object') {
+    //           collectTaskIdQueryVideoUrls(u, out);
+    //         }
+    //       });
+    //     } else if (v && typeof v === 'object') {
+    //       collectTaskIdQueryVideoUrls(v, out);
+    //     }
+    //   });
+    //   // 递归搜索所有字段
+    //   Object.keys(obj).forEach(function (k) {
+    //     if (k !== 'task_status' && k !== 'status' && k !== 'task_id' && k !== 'id' && k !== 'code' && k !== 'message') {
+    //       collectTaskIdQueryVideoUrls(obj[k], out);
+    //     }
+    //   });
+    // }
     
-    function resetCreateForm() {
-      currentStep = 1;
-      selectedAvatar = '👩‍💼';
-      uploadedMaterials = [];
-      recordedVideoBlob = null;
-      recordedAudioBlob = null;
-      selectedVideoFile = null;
-      selectedVideoUrl = null;
-      extractedFrames = [];
-      selectedFrameId = null;
-      selectedAvatarId = null;
-      selectedTemplatePreviewVideo = null;
-      selectedTemplatePreviewImage = null;
-      selectedTemplateName = null;
-      currentPlatform = 'heygen';
-      document.getElementById('scriptInput').value = '';
-      document.getElementById('digitalHumanName').value = '';
-      document.getElementById('digitalHumanDesc').value = '';
-      updateStepIndicator(1);
-      goToStep(1);
+    // function renderTaskIdQueryResult(result) {
+    //   const container = document.getElementById('taskIdQueryResult');
+    //   if (!container) return;
+
+    //   if (!result) {
+    //     container.innerHTML = '';
+    //     return;
+    //   }
+
+    //   const status = normalizeTaskStatus(result.status);
+    //   const progress = result.progress || 0;
       
-      // 重置平台标签激活状态与 API 配置显示
-      document.querySelectorAll('.platform-tab').forEach(tab => {
-        const platform = tab.getAttribute('data-platform');
-        if (platform === 'heygen') {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
-        }
-      });
-      document.querySelectorAll('.api-config').forEach(config => {
-        config.classList.add('hidden');
-      });
-      const heygenConfig = document.getElementById('heygenConfig');
-      if (heygenConfig) {
-        heygenConfig.classList.remove('hidden');
-      }
+    //   // 改进视频URL提取（参考AI创作工坊，使用递归搜索）
+    //   let videoUrl = result.videoUrl || 
+    //                   result.data?.video_url || 
+    //                   result.data?.url || 
+    //                   result.data?.data?.video_url ||
+    //                   result.data?.data?.url ||
+    //                   result.data?.data?.task_result?.videos?.[0]?.url ||
+    //                   result.data?.task_result?.videos?.[0]?.url ||
+    //                   result.video_url ||
+    //                   result.url ||
+    //                   result.result_url ||
+    //                   '';
       
-      // 清理视频预览
-      removeUploadedVideo();
-      hideTemplatePreview();
-    }
+    //   // 如果直接提取失败或不是视频URL，使用递归搜索
+    //   if (!videoUrl || !/\.(mp4|webm|mov|avi)(\?|#|$)/i.test(videoUrl)) {
+    //     const videoUrls = [];
+    //     collectTaskIdQueryVideoUrls(result, videoUrls);
+    //     // 过滤出视频URL
+    //     const filteredVideos = videoUrls.filter(url => /\.(mp4|webm|mov|avi)(\?|#|$)/i.test(url));
+    //     if (filteredVideos.length > 0) {
+    //       videoUrl = filteredVideos[0];
+    //     } else if (videoUrls.length > 0) {
+    //       // 如果没有明确的视频扩展名，使用第一个URL（可能是result_url）
+    //       videoUrl = videoUrls[0];
+    //     }
+    //   }
+      
+    //   const message = result.message || result.error || '';
+
+    //   let html = `
+    //     <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
+    //       <div style="display:flex; justify-content: space-between; gap: 12px; align-items:center;">
+    //         <div style="font-weight: 700;">状态：${status}</div>
+    //         <div style="color: var(--text-secondary); font-size: 0.9rem;">进度：${progress || 0}</div>
+    //       </div>
+    //   `;
+
+    //   if (message && status !== 'completed') {
+    //     html += `<div style="margin-top: 8px; color: var(--text-secondary); white-space: pre-wrap;">${escapeHtml(message)}</div>`;
+    //   }
+      
+    //   // 显示原始数据（用于调试）
+    //   if (status === 'completed' && !videoUrl && result.data) {
+    //     html += `
+    //       <div style="margin-top: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border: 1px solid var(--border);">
+    //         <div style="font-weight: 700; margin-bottom: 8px; color: var(--warning);">⚠️ 任务已完成，但未找到视频URL</div>
+    //         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">请检查API响应数据，视频URL可能在其他字段中。</div>
+    //         <details style="margin-top: 8px;">
+    //           <summary style="cursor: pointer; color: var(--primary); font-size: 0.85rem;">查看原始响应数据</summary>
+    //           <pre style="margin-top: 8px; padding: 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; overflow-x: auto; font-size: 0.75rem; max-height: 300px; overflow-y: auto;">${escapeHtml(JSON.stringify(result.data, null, 2))}</pre>
+    //         </details>
+    //       </div>
+    //     `;
+    //   }
+
+    //   if (videoUrl) {
+    //     html += `
+    //       <div style="margin-top: 12px;">
+    //         <div style="font-weight: 700; margin-bottom: 8px;">🎬 视频结果</div>
+    //         <video controls style="width: 100%; border-radius: 12px; background: #000;" src="${escapeHtml(videoUrl)}"></video>
+    //         <div style="margin-top: 8px; display:flex; gap: 10px; flex-wrap: wrap;">
+    //           <a class="btn secondary" href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener" style="text-decoration:none; padding: 10px 14px;">🔗 打开链接</a>
+    //           <a class="btn primary" href="${escapeHtml(videoUrl)}" download style="text-decoration:none; padding: 10px 14px;">⬇️ 下载视频</a>
+    //         </div>
+    //         <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem; word-break: break-all;">${escapeHtml(videoUrl)}</div>
+    //       </div>
+    //     `;
+    //   }
+
+    //   html += `</div>`;
+    //   container.innerHTML = html;
+    // }
+
+    // function stopTaskIdQueryPolling() {
+    //   try {
+    //     const providerEl = document.getElementById('taskIdQueryProvider');
+    //     const taskIdEl = document.getElementById('taskIdQueryInput');
+    //     const provider = providerEl ? providerEl.value : 'yunwu';
+    //     const taskId = taskIdEl ? taskIdEl.value.trim() : '';
+    //     const key = `${taskIdQueryKeyPrefix}${provider}_${taskId || 'current'}`;
+    //     if (taskPollingIntervals.has(key)) {
+    //       clearInterval(taskPollingIntervals.get(key));
+    //       taskPollingIntervals.delete(key);
+    //     }
+    //   } catch {}
+    //   renderTaskIdQueryStatus('已停止查询', 'warning');
+    // }
+
+    // async function startTaskIdQueryPolling() {
+    //   const providerEl = document.getElementById('taskIdQueryProvider');
+    //   const taskIdEl = document.getElementById('taskIdQueryInput');
+    //   const provider = providerEl ? providerEl.value : 'yunwu';
+    //   const taskId = taskIdEl ? taskIdEl.value.trim() : '';
+
+    //   if (!taskId) {
+    //     renderTaskIdQueryStatus('请输入任务ID', 'error');
+    //     return;
+    //   }
+
+    //   // 读取对应API Key
+    //   const apiKey = provider === 'yunwu' ? getYunwuApiKey() : getHeyGenApiKey();
+    //   if (!apiKey) {
+    //     renderTaskIdQueryStatus(`未检测到 ${provider === 'yunwu' ? '云雾' : 'HeyGen'} API Key，请先在“创建数字人”页面配置并保存`, 'error');
+    //     return;
+    //   }
+
+    //   const key = `${taskIdQueryKeyPrefix}${provider}_${taskId}`;
+    //   // 如果已有轮询，先清除
+    //   if (taskPollingIntervals.has(key)) {
+    //     clearInterval(taskPollingIntervals.get(key));
+    //     taskPollingIntervals.delete(key);
+    //   }
+
+    //   renderTaskIdQueryResult(null);
+    //   renderTaskIdQueryStatus(`开始查询：${provider}/${taskId}（每10秒一次，最长10分钟）`, 'info');
+
+    //   const pollIntervalMs = 10000;
+    //   const maxPolls = 60; // 10分钟
+    //   let pollCount = 0;
+
+    //   const pollInterval = setInterval(async () => {
+    //     pollCount++;
+
+    //     if (pollCount > maxPolls) {
+    //       clearInterval(pollInterval);
+    //       taskPollingIntervals.delete(key);
+    //       renderTaskIdQueryStatus('查询超时（10分钟仍未完成），已判定失败', 'error');
+    //       renderTaskIdQueryResult({ success: false, status: 'failed', message: '查询超时（10分钟）' });
+    //       return;
+    //     }
+
+    //     try {
+    //       const resp = await fetch(buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`));
+    //       const contentType = resp.headers.get('content-type') || '';
+    //       let result;
+    //       if (contentType.includes('application/json')) {
+    //         result = await resp.json();
+    //       } else {
+    //         const text = await resp.text();
+    //         renderTaskIdQueryStatus(`服务器返回非JSON响应 (HTTP ${resp.status})`, 'error');
+    //         renderTaskIdQueryResult({ success: false, status: 'failed', message: text.substring(0, 200) });
+    //         return;
+    //       }
+
+    //       if (!result.success) {
+    //         // 继续轮询，但展示最新错误
+    //         renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：${result.message || '查询失败'}`, 'warning');
+    //         renderTaskIdQueryResult({ ...result, status: 'processing' });
+    //         return;
+    //       }
+
+    //       const status = normalizeTaskStatus(result.status);
+    //       renderTaskIdQueryResult(result);
+    //       renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：状态=${status}${result.progress ? `，进度=${result.progress}` : ''}`, 'info');
+
+    //       if (status === 'completed') {
+    //         clearInterval(pollInterval);
+    //         taskPollingIntervals.delete(key);
+    //         renderTaskIdQueryStatus('✅ 查询成功：任务已完成', 'success');
+    //       } else if (status === 'failed') {
+    //         clearInterval(pollInterval);
+    //         taskPollingIntervals.delete(key);
+    //         renderTaskIdQueryStatus('❌ 查询失败：任务失败', 'error');
+    //       }
+    //     } catch (e) {
+    //       renderTaskIdQueryStatus('查询异常：' + (e && e.message ? e.message : String(e)), 'warning');
+    //     }
+    //   }, pollIntervalMs);
+    //   taskPollingIntervals.set(key, pollInterval);
+    // }
+
+    // // 更新任务状态
+    // function updateTaskStatus(digitalHumanId, status, progress, videoUrl, error) {
+    //   const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+    //   const index = digitalHumans.findIndex(dh => dh.id === digitalHumanId);
+      
+    //   if (index !== -1) {
+    //     const oldStatus = digitalHumans[index].status;
+    //     digitalHumans[index].status = status;
+    //     digitalHumans[index].progress = progress;
+    //     digitalHumans[index].updateDate = new Date().toISOString();
+        
+    //     if (videoUrl) {
+    //       digitalHumans[index].videoUrl = videoUrl;
+    //     }
+        
+    //     // 保存错误信息（如果有）
+    //     if (error) {
+    //       digitalHumans[index].error = error;
+    //     } else if (status === 'failed' && !digitalHumans[index].error) {
+    //       // 如果状态是失败但没有错误信息，设置默认错误信息
+    //       digitalHumans[index].error = '任务失败，原因未知';
+    //     }
+        
+    //     localStorage.setItem('digital_humans', JSON.stringify(digitalHumans));
+        
+    //     // 如果正在查看数字人管理页面，刷新显示
+    //     if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
+    //       loadDigitalHumans();
+    //     }
+        
+    //     // 记录状态变化
+    //     if (oldStatus !== status) {
+    //       console.log('任务状态更新:', { digitalHumanId, oldStatus, newStatus: status, error });
+    //     }
+    //   }
+    // }
+    
+    // function resetCreateForm() {
+    //   currentStep = 1;
+    //   selectedAvatar = '👩‍💼';
+    //   uploadedMaterials = [];
+    //   recordedVideoBlob = null;
+    //   recordedAudioBlob = null;
+    //   selectedVideoFile = null;
+    //   selectedVideoUrl = null;
+    //   extractedFrames = [];
+    //   selectedFrameId = null;
+    //   selectedAvatarId = null;
+    //   selectedTemplatePreviewVideo = null;
+    //   selectedTemplatePreviewImage = null;
+    //   selectedTemplateName = null;
+    //   currentPlatform = 'heygen';
+    //   document.getElementById('scriptInput').value = '';
+    //   document.getElementById('digitalHumanName').value = '';
+    //   document.getElementById('digitalHumanDesc').value = '';
+    //   updateStepIndicator(1);
+    //   goToStep(1);
+      
+    //   // 重置平台标签激活状态与 API 配置显示
+    //   document.querySelectorAll('.platform-tab').forEach(tab => {
+    //     const platform = tab.getAttribute('data-platform');
+    //     if (platform === 'heygen') {
+    //       tab.classList.add('active');
+    //     } else {
+    //       tab.classList.remove('active');
+    //     }
+    //   });
+    //   document.querySelectorAll('.api-config').forEach(config => {
+    //     config.classList.add('hidden');
+    //   });
+    //   const heygenConfig = document.getElementById('heygenConfig');
+    //   if (heygenConfig) {
+    //     heygenConfig.classList.remove('hidden');
+    //   }
+      
+    //   // 清理视频预览
+    //   removeUploadedVideo();
+    //   hideTemplatePreview();
+    // }
     
     // ========== 数字人管理 ==========
     
@@ -2607,6 +2368,15 @@ async function saveYunwuConfig() {
         console.warn('找不到digitalHumanManageList容器，跳过加载数字人列表');
         return;
       }
+      
+      // 如果筛选为"全部"或"数字人"，数字人列表由loadWorks统一渲染，这里隐藏
+      if (dhWorksFilter === '' || dhWorksFilter === 'digital') {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // 筛选为"作品"时，显示数字人列表（旧样式）
+      container.style.display = '';
       
       if (digitalHumans.length === 0) {
         container.innerHTML = '<div class="empty-history">暂无数字人，请先创建数字人</div>';
@@ -2843,7 +2613,9 @@ if (dh.status) {
       }
       
       try {
-        const response = await fetch(buildApiUrl(`/api/digital-human/task/yunwu/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`));
+        const response = await fetch(buildApiUrl(`/api/digital-human/task/yunwu/${dh.taskId}`), {
+          headers: (window.getAuthHeaders && window.getAuthHeaders()) || {}
+        });
         
         const contentType = response.headers.get('content-type') || '';
         let result;
@@ -2887,7 +2659,9 @@ if (dh.status) {
       }
       
       try {
-        const response = await fetch(buildApiUrl(`/api/heygen/task/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`));
+        const response = await fetch(buildApiUrl(`/api/heygen/task/${dh.taskId}`), {
+          headers: (window.getAuthHeaders && window.getAuthHeaders()) || {}
+        });
         
         const contentType = response.headers.get('content-type') || '';
         let result;
@@ -2947,9 +2721,8 @@ if (dh.status) {
       try {
         const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, (window.getAuthHeaders && window.getAuthHeaders()) || {}),
           body: JSON.stringify({
-            apiKey,
             avatarId: 'default',
             text: dh.script,
             voiceId: dh.voice || null
@@ -3175,141 +2948,11 @@ async function retryTask(digitalHumanId) {
       localStorage.setItem('digital_humans', JSON.stringify(digitalHumans));
       
       loadDigitalHumans();
+      if (typeof window.loadWorks === 'function') window.loadWorks();
     }
     
-    // ========== 作品管理 ==========
-    
-    function loadWorks() {
-      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
-      const container = document.getElementById('worksList');
-      
-      // 如果容器不存在，直接返回
-      if (!container) {
-        console.warn('找不到worksList容器，跳过加载作品列表');
-        return;
-      }
-      
-      if (works.length === 0) {
-        container.innerHTML = '<div class="empty-history">暂无作品</div>';
-        return;
-      }
-      
-      container.innerHTML = works.map(work => {
-        const typeLabel = work.type === 'recite' ? '📖 诵读文案' : work.type === 'product' ? '🛒 卖货推送' : '🎬 其他';
-        const title = work.type === 'product' ? (work.productName || work.title) : (work.title || (work.script ? work.script.substring(0, 30) + (work.script.length > 30 ? '...' : '') : '未命名'));
-        const statusLabel = work.status === 'ready' ? '已完成' : work.status === 'failed' ? '失败' : '处理中';
-        const statusBg = work.status === 'ready' ? 'var(--success)' : work.status === 'failed' ? 'var(--danger)' : 'var(--warning)';
-        const hasVideo = !!(work.videoUrl || work.video_file?.dataUrl);
-        const videoSrc = work.videoUrl || work.video_file?.dataUrl || '';
-        
-        return `
-          <div class="history-item dh-card">
-            <div class="history-header">
-              <span class="history-avatar">${typeLabel}</span>
-              <div class="history-meta">
-                <div class="history-platform" style="background: ${statusBg};">${statusLabel}</div>
-                <div class="history-date">${new Date(work.createDate).toLocaleString()}</div>
-              </div>
-            </div>
-            <div class="history-script">${title}</div>
-            <div class="history-actions dh-actions">
-              ${hasVideo ? `<button class="history-btn dh-icon-btn" onclick="playWork('${work.id}')">▶️ 播放</button>` : ''}
-              ${hasVideo ? `<button class="history-btn dh-icon-btn" onclick="downloadWork('${work.id}')">⬇️ 下载</button>` : ''}
-              ${work.status !== 'ready' && work.taskId ? `<button class="history-btn dh-icon-btn" onclick="refreshWorkInWorks('${work.id}')">🔄 刷新</button>` : ''}
-              <button class="history-btn dh-icon-btn" onclick="deleteWork('${work.id}')">🗑️ 删除</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-    
-    function playWork(id) {
-      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
-      const w = works.find(x => x.id === id);
-      if (!w || (!w.videoUrl && !w.video_file?.dataUrl)) {
-        alert('该作品暂无可播放视频');
-        return;
-      }
-      const url = w.videoUrl || w.video_file?.dataUrl || '';
-      if (url) window.open(url, '_blank', 'noopener');
-    }
-    
-    async function downloadWork(id) {
-      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
-      const w = works.find(x => x.id === id);
-      if (!w || (!w.videoUrl && !w.video_file?.dataUrl)) {
-        alert('该作品暂无可下载视频');
-        return;
-      }
-      const url = w.videoUrl || w.video_file?.dataUrl || '';
-      const filename = (w.title || w.productName || '作品') + '.mp4';
-      try {
-        // data/blob 直接下载
-        if (/^(data:|blob:)/i.test(url)) {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          return;
-        }
-        // 远程URL：优先 fetch->blob（更像“下载到本地”）
-        const resp = await fetch(url, { mode: 'cors' });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const blob = await resp.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-      } catch (e) {
-        // CORS/跨域等失败：退化为打开链接，提示用户另存为
-        window.open(url, '_blank', 'noopener');
-        alert('已在新窗口打开视频链接。如未自动下载，请在新窗口右键视频选择“另存为”。\n\n原因：可能是跨域限制导致无法直接下载。');
-      }
-    }
-    
-    function refreshWorkInWorks(id) {
-      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
-      const work = works.find(w => w.id === id);
-      if (!work || !work.taskId) return;
-      const platform = work.platform || 'heygen';
-      const apiKey = platform === 'yunwu' ? (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : '') : getHeyGenApiKey();
-      if (!apiKey) {
-        alert(platform === 'yunwu' ? '请先配置云雾 API Key' : '请先配置 HeyGen API Key');
-        return;
-      }
-      const done = (status, progress, videoUrl, error) => {
-        const idx = works.findIndex(w => w.id === id);
-        if (idx === -1) return;
-        works[idx].status = status === 'completed' ? 'ready' : status;
-        works[idx].progress = progress;
-        if (videoUrl) works[idx].videoUrl = videoUrl;
-        if (error) works[idx].error = error;
-        works[idx].updateDate = new Date().toISOString();
-        localStorage.setItem('cn_dh_works', JSON.stringify(works));
-        loadWorks();
-      };
-      const url = buildApiUrl(`/api/digital-human/task/${platform}/${work.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
-      fetch(url).then(r => r.json()).then(result => {
-        if (result.success) done(result.status, result.progress || 0, result.videoUrl || result.data?.video_url, result.error);
-      }).catch(() => {});
-    }
-    
-    function deleteWork(id) {
-      if (!confirm('确定要删除这个作品吗？')) return;
-      
-      let works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
-      works = works.filter(w => w.id !== id);
-      localStorage.setItem('cn_dh_works', JSON.stringify(works));
-      
-      loadWorks();
-    }
-    
+    // ========== 作品管理（已迁至 modules/works.js）==========
+
     // ========== 通用功能 ==========
     
     // 更新字数统计
@@ -3335,156 +2978,7 @@ async function retryTask(digitalHumanId) {
       valueEl.textContent = slider.value;
     }
     
-    // ========== HeyGen API ==========
-    
-    function saveHeyGenConfig() {
-      const apiKey = document.getElementById('heygenApiKey').value.trim();
-      
-      if (!apiKey) {
-        showStatus('heygenStatus', '请填写API Key', 'error');
-        return;
-      }
-      
-      try {
-        localStorage.setItem('heygen_api_key', apiKey);
-        showStatus('heygenStatus', '✅ 配置已保存（建议点击"测试连接"验证配置）', 'success');
-      } catch (e) {
-        console.warn('无法保存到 localStorage:', e);
-        showStatus('heygenStatus', '⚠️ 配置已保存到输入框，但 localStorage 可能不可用', 'warning');
-      }
-    }
-    
-    async function testHeyGenApi() {
-      const apiKey = document.getElementById('heygenApiKey').value.trim();
-      
-      if (!apiKey) {
-        showStatus('heygenStatus', '请先填写API Key', 'error');
-        return;
-      }
-      
-      showStatus('heygenStatus', '⏳ 正在测试连接...', 'warning');
-      
-      try {
-        const response = await fetch(buildApiUrl('/api/heygen/test'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey
-          })
-        });
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('非JSON响应:', text.substring(0, 200));
-          showStatus('heygenStatus', '❌ 服务器返回了非JSON响应，请检查服务器配置', 'error');
-          return;
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          localStorage.setItem('heygen_api_key', apiKey);
-          localStorage.setItem('heygen_api_tested', 'true');
-          localStorage.setItem('heygen_api_test_time', new Date().toISOString());
-          showStatus('heygenStatus', '✅ ' + (result.message || '连接成功！API Key 验证通过'), 'success');
-          
-          // 测试成功后自动加载语音列表
-          setTimeout(() => {
-            loadHeyGenVoices();
-          }, 500);
-        } else {
-          localStorage.removeItem('heygen_api_tested');
-          showStatus('heygenStatus', '❌ 连接失败：' + (result.message || '未知错误'), 'error');
-        }
-      } catch (error) {
-        console.error('HeyGen API测试错误:', error);
-        if (error.message.includes('JSON')) {
-          showStatus('heygenStatus', '❌ 服务器响应格式错误，请检查服务器配置', 'error');
-        } else {
-          showStatus('heygenStatus', '❌ 网络错误：' + error.message, 'error');
-        }
-      }
-    }
-
-    // ========== 云雾AI 文案模型 ==========
-    
-    function saveYunwuConfig() {
-      const apiKey = document.getElementById('yunwuApiKey')?.value.trim();
-      
-      if (!apiKey) {
-        showStatus('yunwuStatus', '请填写云雾 API Key', 'error');
-        return;
-      }
-      
-      try {
-        localStorage.setItem('yunwu_api_key', apiKey);
-        showStatus('yunwuStatus', '✅ 云雾 API Key 已保存（建议点击“测试连接”验证配置）', 'success');
-      } catch (e) {
-        console.warn('无法保存云雾 API Key 到 localStorage:', e);
-        showStatus('yunwuStatus', '⚠️ 配置已保存到输入框，但 localStorage 可能不可用', 'warning');
-      }
-    }
-    
-    async function testYunwuApi() {
-      const apiKeyInput = document.getElementById('yunwuApiKey');
-      const apiKey = apiKeyInput ? apiKeyInput.value.trim() : getYunwuApiKey();
-      
-      if (!apiKey) {
-        showStatus('yunwuStatus', '请先填写云雾 API Key', 'error');
-        return;
-      }
-      
-      showStatus('yunwuStatus', '⏳ 正在测试数字人API连接...', 'warning');
-      
-      try {
-        const response = await fetch(buildApiUrl('/api/yunwu/test'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey })
-        });
-        
-        const contentType = response.headers.get('content-type') || '';
-        let result;
-        
-        if (contentType.includes('application/json')) {
-          result = await response.json();
-        } else {
-          const text = await response.text();
-          console.error('云雾测试接口返回非JSON响应:', text.substring(0, 200));
-          throw new Error('云雾测试接口返回了非 JSON 格式的响应');
-        }
-        
-        if (result.success) {
-          localStorage.setItem('yunwu_api_key', apiKey);
-          localStorage.setItem('yunwu_api_tested', 'true');
-          localStorage.setItem('yunwu_api_test_time', new Date().toISOString());
-          showStatus('yunwuStatus', '✅ ' + (result.message || '云雾数字人API连接正常，可以用于创建数字人视频'), 'success');
-        } else {
-          localStorage.removeItem('yunwu_api_tested');
-          
-          // ✅ 使用统一的错误处理函数
-          if (isTokenTypeErrorResponse(result)) {
-            const tokenErrorMessage = result.message || 'API令牌类型错误';
-            showStatus('yunwuStatus', '❌ ' + tokenErrorMessage, 'error');
-            // 显示详细提示
-            setTimeout(() => {
-              handleTokenTypeError(result);
-            }, 500);
-          } else {
-            showStatus('yunwuStatus', '❌ 云雾数字人API测试失败：' + (result.message || '未知错误'), 'error');
-          }
-        }
-      } catch (error) {
-        console.error('测试云雾API错误:', error);
-        localStorage.removeItem('yunwu_api_tested');
-        if (error.message.includes('JSON')) {
-          showStatus('yunwuStatus', '❌ 服务器响应格式错误，请检查服务器配置', 'error');
-        } else {
-          showStatus('yunwuStatus', '❌ 网络错误：' + error.message, 'error');
-        }
-      }
-    }
+    // HeyGen/云雾 API 保存与测试已移至 modules/config.js，此处使用 window 上的 saveHeyGenConfig/saveYunwuConfig/testHeyGenApi/testYunwuApi
     
     // 暴露函数到全局作用域
     window.updateStep2ForPlatform = updateStep2ForPlatform;
@@ -3746,14 +3240,14 @@ async function retryTask(digitalHumanId) {
       
       try {
         // 构建API请求URL，添加资源类型参数
-        let apiUrl = `/api/heygen/avatars?apiKey=${encodeURIComponent(apiKey)}`;
+        let apiUrl = '/api/heygen/avatars';
         if (context === 'create') {
-          apiUrl += `&resourceType=video`;
+          apiUrl += '?resourceType=video';
         }
         
-        const response = await fetch(apiUrl, {
+        const response = await fetch(buildApiUrl(apiUrl), {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: Object.assign({ 'Content-Type': 'application/json' }, (window.getAuthHeaders && window.getAuthHeaders()) || {})
         });
         
         const contentType = response.headers.get('content-type') || '';
@@ -4178,9 +3672,9 @@ async function retryTask(digitalHumanId) {
       }
       
       try {
-        const response = await fetch(buildApiUrl(`/api/heygen/voices?apiKey=${encodeURIComponent(apiKey)}`), {
+        const response = await fetch(buildApiUrl('/api/heygen/voices'), {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: Object.assign({ 'Content-Type': 'application/json' }, (window.getAuthHeaders && window.getAuthHeaders()) || {})
         });
         
         const contentType = response.headers.get('content-type') || '';
@@ -4430,13 +3924,7 @@ async function retryTask(digitalHumanId) {
       }
     }
     
-    // 显示状态
-    function showStatus(elementId, message, type) {
-      const el = document.getElementById(elementId);
-      el.className = 'api-status ' + type;
-      el.textContent = message;
-      el.style.display = 'block';
-    }
+    // showStatus 已由 modules/config.js 提供
     
     // 显示/隐藏加载
     function showLoading(show, text) {
@@ -5004,26 +4492,28 @@ async function retryTask(digitalHumanId) {
       window.location.href = url;
     }
     
-    // ========== 诵读文案功能 ==========
-    
-    // 诵读文案、卖货推送仅使用已创建并完成的数字人（按官方能力：二次创作基于自有 avatar）
-    function loadReciteAvatars() {
-      loadMyDigitalHumans('recite');
-    }
-    
-    function loadPromoteAvatars() {
-      loadMyDigitalHumans('promote');
-    }
+    // ========== 诵读文案 / 卖货推送：数字人列表 ==========
+    // loadReciteAvatars 已移至 modules/recite.js，内部调用 loadMyDigitalHumans('recite')
     
     // 加载用户自己创建的数字人列表（含 HeyGen 与 云雾已完成数字人）
     function loadMyDigitalHumans(context) {
       const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
-      const completedDigitalHumans = digitalHumans.filter(dh => {
+      
+      // 获取当前选择的平台
+      const currentPlatform = context === 'recite' ? selectedRecitePlatform : selectedPromotePlatform;
+      
+      // 过滤已完成且符合平台要求的数字人
+      let completedDigitalHumans = digitalHumans.filter(dh => {
         if (dh.status !== 'completed') return false;
         if (dh.platform === 'heygen') return !!(dh.avatarId);
         if (dh.platform === 'yunwu') return !!(dh.thumbnail || dh.videoUrl);
         return false;
       });
+      
+      // 如果已选择平台，只显示该平台的数字人
+      if (currentPlatform) {
+        completedDigitalHumans = completedDigitalHumans.filter(dh => dh.platform === currentPlatform);
+      }
       
       let containerId;
       if (context === 'recite') {
@@ -5042,11 +4532,16 @@ async function retryTask(digitalHumanId) {
       }
       
       if (completedDigitalHumans.length === 0) {
+        const platformHint = currentPlatform 
+          ? (currentPlatform === 'yunwu' ? '云雾' : 'HeyGen')
+          : '';
         container.innerHTML = `
           <div style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
             <div style="font-size: 2.5rem; margin-bottom: 12px;">👤</div>
-            <div style="font-size: 0.95rem; margin-bottom: 8px; color: var(--text-primary);">暂无可用的数字人</div>
-            <div style="font-size: 0.85rem; color: var(--text-secondary);">请先创建并完成至少一个数字人</div>
+            <div style="font-size: 0.95rem; margin-bottom: 8px; color: var(--text-primary);">暂无可用的${platformHint ? platformHint + '平台' : ''}数字人</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+              ${currentPlatform ? `请先创建并完成至少一个${platformHint}数字人` : '请先选择平台并创建数字人'}
+            </div>
             <button class="btn secondary" onclick="switchMenu('create')" style="margin-top: 16px; padding: 8px 16px;">
               ➕ 去创建数字人
             </button>
@@ -5058,7 +4553,6 @@ async function retryTask(digitalHumanId) {
       const selectedId = context === 'recite' ? selectedReciteDigitalHumanId : selectedPromoteDigitalHumanId;
       container.innerHTML = completedDigitalHumans.map(dh => {
         const isSelected = selectedId === dh.id;
-        const thumbnail = dh.thumbnail || (dh.videoUrl ? dh.videoUrl : '');
         const displayName = dh.name || '未命名数字人';
         const platformLabel = dh.platform === 'yunwu' ? '云雾' : 'HeyGen';
         const key = dh.platform === 'heygen' ? (dh.avatarId || dh.id) : dh.id;
@@ -5066,16 +4560,34 @@ async function retryTask(digitalHumanId) {
         const safeContext = String(context).replace(/'/g, "\\'");
         const safeDhId = String(dh.id).replace(/'/g, "\\'");
         const safePlatform = String(dh.platform).replace(/'/g, "\\'");
+        
+        // ✅ 仅显示URL格式的thumbnail，避免Base64导致431错误
+        // 如果是URL格式的thumbnail，可以显示；如果是Base64，使用占位符
+        let thumbnailUrl = null;
+        if (dh.thumbnail) {
+          // 检查是否是URL格式
+          if (dh.thumbnail.startsWith('http://') || dh.thumbnail.startsWith('https://')) {
+            thumbnailUrl = dh.thumbnail;
+          }
+          // Base64格式不显示，避免431错误
+        }
 
+        // ✅ 仅传递数字人ID，避免在HTML中嵌入大量数据导致431错误
+        // 使用data属性存储ID，而不是在onclick中传递
         return `
           <div class="avatar-template-item ${isSelected ? 'selected' : ''}" 
-               onclick="selectMyDigitalHuman('${safePlatform}', '${safeKey}', '${safeDhId}', '${safeContext}')"
+               data-platform="${safePlatform}"
+               data-key="${safeKey}"
+               data-dh-id="${safeDhId}"
+               data-context="${safeContext}"
+               onclick="selectMyDigitalHumanByElement(this)"
                style="cursor: pointer; padding: 12px; background: var(--bg-secondary); border-radius: 12px; border: 2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}; transition: all 0.2s;">
-            ${thumbnail ? 
-              `<img src="${thumbnail}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">` :
-              `<div style="width: 100%; aspect-ratio: 1; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>`
+            ${thumbnailUrl ? 
+              `<img src="${thumbnailUrl}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+              ''
             }
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
+            <div style="width: 100%; aspect-ratio: 1; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; display: ${thumbnailUrl ? 'none' : 'flex'}; align-items: center; justify-content: center; font-size: 2rem;">👤</div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 8px;" title="${displayName}">${displayName}</div>
             <div style="font-size: 0.7rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${platformLabel}</div>
             ${isSelected ? '<div style="text-align: center; margin-top: 4px; color: var(--primary); font-size: 0.75rem;">✓ 已选择</div>' : ''}
           </div>
@@ -5083,58 +4595,111 @@ async function retryTask(digitalHumanId) {
       }).join('');
     }
 
+    // ✅ 通过元素选择数字人（避免在onclick中传递大量数据）
+    function selectMyDigitalHumanByElement(element) {
+      const platform = element.dataset.platform;
+      const avatarKey = element.dataset.key;
+      const digitalHumanId = element.dataset.dhId;
+      const context = element.dataset.context;
+      
+      selectMyDigitalHuman(platform, avatarKey, digitalHumanId, context);
+    }
+    
     function selectMyDigitalHuman(platform, avatarKey, digitalHumanId, context) {
       const containerId = context === 'recite' ? 'reciteAvatarSelector' : 'promoteAvatarSelector';
       const container = document.getElementById(containerId);
       if (container) {
         container.querySelectorAll('.avatar-template-item').forEach(item => item.classList.remove('selected'));
+        // 标记选中的项
+        const selectedItem = container.querySelector(`[data-dh-id="${digitalHumanId}"]`);
+        if (selectedItem) {
+          selectedItem.classList.add('selected');
+        }
       }
       const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
       const dh = platform === 'yunwu' && digitalHumanId ? digitalHumans.find(function(d) { return d.id === digitalHumanId; }) : null;
       const hasVideoUrl = !!(dh && dh.videoUrl);
+      
       if (context === 'recite') {
+        // 如果当前选择的平台与数字人平台不一致，自动切换平台
+        if (selectedRecitePlatform && selectedRecitePlatform !== platform) {
+          // 平台不匹配，自动切换
+          switchRecitePlatform(platform);
+        } else if (!selectedRecitePlatform) {
+          // 如果还没有选择平台，设置为数字人的平台
+          switchRecitePlatform(platform);
+        }
+        
+        // 更新选择状态
         selectedRecitePlatform = platform;
         selectedAvatarForRecite = platform === 'heygen' ? avatarKey : null;
         selectedReciteDigitalHumanId = digitalHumanId;
         reciteAudioBase64Yunwu = null;
-        const el = document.getElementById('reciteYunwuAudioWrap');
-        if (el) el.style.display = platform === 'yunwu' ? 'block' : 'none';
-        const inp = document.getElementById('reciteYunwuAudioInput');
-        if (inp) inp.value = '';
-        const useRow = document.getElementById('reciteUseVideoSoundRow');
-        if (useRow) useRow.style.display = (platform === 'yunwu' && hasVideoUrl) ? 'block' : 'none';
-        const statusEl = document.getElementById('reciteVideoSoundStatus');
-        if (statusEl) statusEl.style.display = 'none';
+        
+        // 更新平台UI（确保UI与选择一致）
+        updateRecitePlatformUI(platform);
+        
+        // ✅ 如果是云雾平台且有视频，自动填充到步骤3（仅使用视频ID，避免传递长URL）
+        if (platform === 'yunwu' && dh) {
+          // 优先使用视频ID，避免传递长URL导致431错误
+          const videoId = dh.videoId || null;
+          const videoUrl = dh.videoUrl || null;
+          
+          reciteSelectedVideo = {
+            id: videoId,
+            url: videoUrl, // 保留URL用于后续API调用，但不显示在UI中
+            name: dh.name || '已选择的数字人视频'
+          };
+          
+          const videoIdInput = document.getElementById('reciteVideoIdInput');
+          const videoUrlInput = document.getElementById('reciteVideoUrlInput');
+          
+          // ✅ 优先填充视频ID，避免在输入框中显示长URL
+          if (videoId && videoIdInput) {
+            videoIdInput.value = videoId;
+            if (videoUrlInput) videoUrlInput.value = ''; // 清空URL输入框
+          } else if (videoUrl && videoUrlInput) {
+            // 如果没有ID，才使用URL（但截断显示）
+            videoUrlInput.value = videoUrl;
+            if (videoIdInput) videoIdInput.value = '';
+          }
+          
+          updateReciteSelectedVideoUI();
+        }
+        
+        // ✅ 不再需要更新音频上传区域（已改为自动生成）
       } else {
+        // 如果当前选择的平台与数字人平台不一致，自动切换平台
+        if (selectedPromotePlatform && selectedPromotePlatform !== platform) {
+          // 平台不匹配，自动切换
+          switchPromotePlatform(platform);
+        } else if (!selectedPromotePlatform) {
+          // 如果还没有选择平台，设置为数字人的平台
+          switchPromotePlatform(platform);
+        }
+        
+        // 更新选择状态
         selectedPromotePlatform = platform;
-        selectedAvatarForPromote = platform === 'heygen' ? avatarKey : null;
-        selectedPromoteDigitalHumanId = digitalHumanId;
+        // ✅ 已删除：不再需要选择数字人
+        selectedPromoteDigitalHumanId = null;
         promoteAudioBase64Yunwu = null;
-        const el = document.getElementById('promoteYunwuAudioWrap');
-        if (el) el.style.display = platform === 'yunwu' ? 'block' : 'none';
+        
+        // 更新平台UI（确保UI与选择一致）
+        updatePromotePlatformUI(platform);
+        
+        // ✅ 已删除：不再需要音频上传区域
+        if (statusEl) statusEl.style.display = 'none';
         const inp = document.getElementById('promoteYunwuAudioInput');
         if (inp) inp.value = '';
-        const useRow = document.getElementById('promoteUseVideoSoundRow');
-        if (useRow) useRow.style.display = (platform === 'yunwu' && hasVideoUrl) ? 'block' : 'none';
-        const statusEl = document.getElementById('promoteVideoSoundStatus');
-        if (statusEl) statusEl.style.display = 'none';
       }
       loadMyDigitalHumans(context);
     }
     
-    function handleReciteYunwuAudio(e) {
-      const f = e.target?.files?.[0];
-      if (!f) { reciteAudioBase64Yunwu = null; return; }
-      const reader = new FileReader();
-      reader.onload = function() {
-        let s = String(reader.result || '');
-        if (s.indexOf('data:') === 0) { const i = s.indexOf(','); s = i >= 0 ? s.slice(i + 1) : ''; }
-        reciteAudioBase64Yunwu = s.replace(/[\s\n\r]/g, '');
-      };
-      reader.readAsDataURL(f);
-      var se = document.getElementById('reciteVideoSoundStatus');
-      if (se) se.style.display = 'none';
+    if (typeof window !== 'undefined') {
+      window.loadMyDigitalHumans = loadMyDigitalHumans;
     }
+    
+    // ✅ 已删除：handleReciteYunwuAudio - 不再需要手动上传音频，改为自动生成
     function handlePromoteYunwuAudio(e) {
       const f = e.target?.files?.[0];
       if (!f) { promoteAudioBase64Yunwu = null; return; }
@@ -5187,6 +4752,7 @@ async function retryTask(digitalHumanId) {
       out.set(new Uint8Array(pcm.buffer), 44);
       return out.buffer;
     }
+    // ✅ extractAudioFromVideoUrl保留供卖货推送功能使用（诵读文案不再使用）
     function extractAudioFromVideoUrl(videoUrl) {
       return new Promise(function(resolve, reject) {
         if (!videoUrl || !(typeof buildApiUrl === 'function')) {
@@ -5202,59 +4768,132 @@ async function retryTask(digitalHumanId) {
         video.src = proxyUrl;
         var chunks = [];
         var recorder;
-        video.onerror = function() { reject(new Error('视频加载失败，请检查地址或网络')); };
+        var timeoutId;
+        
+        video.onerror = function() { 
+          if (timeoutId) clearTimeout(timeoutId);
+          reject(new Error('视频加载失败，请检查地址或网络')); 
+        };
+        
         video.oncanplaythrough = function() {
-          var stream = (video.captureStream && video.captureStream()) || (video.mozCaptureStream && video.mozCaptureStream());
-          if (!stream) {
-            reject(new Error('当前浏览器不支持从视频截取音轨'));
-            return;
-          }
-          var mime = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) ? 'audio/webm;codecs=opus' : 'audio/webm';
-          recorder = new MediaRecorder(stream, { mimeType: mime });
-          recorder.ondataavailable = function(ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
-          recorder.onstop = function() {
-            var blob = new Blob(chunks, { type: mime });
-            blob.arrayBuffer().then(function(buf) {
-              var ctx = new (window.AudioContext || window.webkitAudioContext)();
-              return ctx.decodeAudioData(buf.slice(0));
-            }).then(function(decoded) {
-              var wav = audioBufferToWav(decoded);
-              resolve(arrayBufferToBase64(wav));
-            }).catch(function(e) {
-              reject(e || new Error('解码音频失败'));
+          try {
+            var stream = (video.captureStream && video.captureStream()) || (video.mozCaptureStream && video.mozCaptureStream());
+            if (!stream) {
+              reject(new Error('当前浏览器不支持从视频截取音轨'));
+              return;
+            }
+            
+            var audioTracks = stream.getAudioTracks();
+            if (!audioTracks || audioTracks.length === 0) {
+              reject(new Error('视频中没有音频轨道，无法提取音频'));
+              return;
+            }
+            
+            var supportedMimeTypes = [
+              'audio/webm;codecs=opus',
+              'audio/webm',
+              'audio/mp4',
+              'audio/ogg;codecs=opus',
+              'audio/ogg',
+              ''
+            ];
+            
+            var mime = '';
+            for (var i = 0; i < supportedMimeTypes.length; i++) {
+              var testMime = supportedMimeTypes[i];
+              if (!testMime || (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(testMime))) {
+                mime = testMime;
+                break;
+              }
+            }
+            
+            try {
+              recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+            } catch (e) {
+              try {
+                recorder = new MediaRecorder(stream);
+                mime = '';
+              } catch (e2) {
+                reject(new Error('无法创建MediaRecorder：' + (e2.message || e2.toString())));
+                return;
+              }
+            }
+            
+            recorder.onerror = function(event) {
+              if (timeoutId) clearTimeout(timeoutId);
+              reject(new Error('MediaRecorder错误：' + (event.error ? event.error.message : '未知错误')));
+            };
+            
+            recorder.ondataavailable = function(ev) { 
+              if (ev.data && ev.data.size) chunks.push(ev.data); 
+            };
+            
+            recorder.onstop = function() {
+              if (timeoutId) clearTimeout(timeoutId);
+              if (chunks.length === 0) {
+                reject(new Error('未录制到音频数据'));
+                return;
+              }
+              var blob = new Blob(chunks, { type: mime || 'audio/webm' });
+              blob.arrayBuffer().then(function(buf) {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                return ctx.decodeAudioData(buf.slice(0));
+              }).then(function(decoded) {
+                var wav = audioBufferToWav(decoded);
+                resolve(arrayBufferToBase64(wav));
+              }).catch(function(e) {
+                reject(e || new Error('解码音频失败'));
+              });
+            };
+            
+            try {
+              recorder.start(100);
+            } catch (startError) {
+              reject(new Error('MediaRecorder启动失败：' + (startError.message || startError.toString())));
+              return;
+            }
+            
+            timeoutId = setTimeout(function() {
+              if (recorder && recorder.state !== 'inactive') {
+                try {
+                  recorder.stop();
+                } catch (e) {}
+              }
+              reject(new Error('提取音频超时（30秒）'));
+            }, 30000);
+            
+            video.play().catch(function(playError) {
+              if (timeoutId) clearTimeout(timeoutId);
+              if (recorder && recorder.state !== 'inactive') {
+                try {
+                  recorder.stop();
+                } catch (e) {}
+              }
+              reject(new Error('无法播放视频：' + (playError.message || playError.toString())));
             });
-          };
-          recorder.start(100);
-          video.play().catch(reject);
+          } catch (error) {
+            if (timeoutId) clearTimeout(timeoutId);
+            reject(new Error('提取音频时发生错误：' + (error.message || error.toString())));
+          }
         };
+        
         video.onended = function() {
-          if (recorder && recorder.state !== 'inactive') recorder.stop();
+          if (timeoutId) clearTimeout(timeoutId);
+          if (recorder && recorder.state !== 'inactive') {
+            try {
+              recorder.stop();
+            } catch (e) {
+              console.error('停止MediaRecorder失败:', e);
+            }
+          }
         };
+        
         video.load();
       });
     }
-    function useReciteVideoSound() {
-      var list = JSON.parse(localStorage.getItem('digital_humans') || '[]');
-      var dh = list.find(function(d) { return d.id === selectedReciteDigitalHumanId; });
-      if (!dh || !dh.videoUrl) {
-        alert('当前数字人没有可用的原视频地址');
-        return;
-      }
-      var btn = document.getElementById('reciteUseVideoSoundBtn');
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在从视频提取声音...'; }
-      extractAudioFromVideoUrl(dh.videoUrl).then(function(b64) {
-        reciteAudioBase64Yunwu = b64.replace(/[\s\n\r]/g, '');
-        var inp = document.getElementById('reciteYunwuAudioInput');
-        if (inp) inp.value = '';
-        var statusEl = document.getElementById('reciteVideoSoundStatus');
-        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ 已使用原视频中的声音'; }
-        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
-      }).catch(function(err) {
-        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
-        alert('提取失败：' + (err && err.message ? err.message : String(err)));
-      });
-    }
-    function usePromoteVideoSound() {
+    
+    // ✅ 已删除：useReciteVideoSound - 不再需要手动提取音频，改为自动生成语音
+    async function usePromoteVideoSound() {
       var list = JSON.parse(localStorage.getItem('digital_humans') || '[]');
       var dh = list.find(function(d) { return d.id === selectedPromoteDigitalHumanId; });
       if (!dh || !dh.videoUrl) {
@@ -5263,35 +4902,81 @@ async function retryTask(digitalHumanId) {
       }
       var btn = document.getElementById('promoteUseVideoSoundBtn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在从视频提取声音...'; }
-      extractAudioFromVideoUrl(dh.videoUrl).then(function(b64) {
-        promoteAudioBase64Yunwu = b64.replace(/[\s\n\r]/g, '');
+      try {
+        var b64 = await extractAudioFromVideoUrl(dh.videoUrl);
+        var cleanB64 = b64.replace(/[\s\n\r]/g, '');
+        
+        // ✅ 将提取的音频Base64转换为Blob，然后上传为URL
+        showLoading(true, '正在上传音频...');
+        const response = await fetch(b64);
+        const blob = await response.blob();
+        const file = new File([blob], 'extracted-audio.mp3', { type: 'audio/mpeg' });
+        var audioUrl = await uploadAudioFile(file);
+        promoteAudioBase64Yunwu = audioUrl; // 存储URL而不是Base64
+        
         var inp = document.getElementById('promoteYunwuAudioInput');
         if (inp) inp.value = '';
         var statusEl = document.getElementById('promoteVideoSoundStatus');
-        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ 已使用原视频中的声音'; }
+        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ 已使用原视频中的声音（已转换为URL）'; }
         if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
-      }).catch(function(err) {
+        showLoading(false);
+      } catch (err) {
+        showLoading(false);
         if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
         alert('提取失败：' + (err && err.message ? err.message : String(err)));
-      });
+      }
     }
 
     // 大 base64 转临时 URL，供云雾接口传 URL 避免 431（云雾/可灵 image、sound_file 均支持 URL）
+    // 根据官方文档：image 支持 URL/Base64，sound_file 也应支持 URL
+    // ✅ 强制策略：所有Base64都转换为URL，避免431错误
     async function ensureYunwuAssetUrl(value, type) {
-      if (!value) return value;
+      if (!value) {
+        throw new Error(`${type}内容为空`);
+      }
       var s = String(value).trim();
-      if (s.startsWith('http://') || s.startsWith('https://')) return s;
-      if (s.length <= 200000) return value;
+      
+      if (!s || s.length === 0) {
+        throw new Error(`${type}内容为空`);
+      }
+      
+      // 如果已经是URL，直接返回
+      if (s.startsWith('http://') || s.startsWith('https://')) {
+        console.log(`✅ ${type}已是URL格式，直接使用`);
+        return s;
+      }
+      
+      // ✅ 强制转换：所有Base64都转换为URL（避免431错误）
+      // 不再设置阈值，因为即使小文件也可能导致请求体过大
+      console.log(`⚠️ 检测到${type} Base64（${s.length}字符，约${(s.length * 3 / 4 / 1024).toFixed(2)}KB），正在转换为URL以避免431错误...`);
+      
       try {
         var r = await fetch(buildApiUrl('/api/upload-temp-asset'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: type === 'audio' ? 'audio' : 'image', content: s })
         });
-        var j = await r.json().catch(function() { return {}; });
-        if (j && j.success && j.url) return j.url;
-      } catch (e) { console.warn('upload-temp-asset failed:', e); }
-      return value;
+        
+        if (!r.ok) {
+          const errorText = await r.text().catch(() => '未知错误');
+          throw new Error(`上传失败 (HTTP ${r.status}): ${errorText.substring(0, 100)}`);
+        }
+        
+        var j = await r.json().catch(function() { return { success: false, message: '响应解析失败' }; });
+        
+        if (j && j.success && j.url) {
+          console.log(`✅ ${type}已转换为临时URL: ${j.url.substring(0, 50)}...`);
+          return j.url;
+        } else {
+          const errorMsg = j.message || j.error || '上传失败';
+          console.error(`❌ ${type}转换为URL失败:`, errorMsg);
+          throw new Error(`${type}转换为URL失败: ${errorMsg}`);
+        }
+      } catch (e) { 
+        console.error(`❌ upload-temp-asset failed for ${type}:`, e);
+        // 重新抛出错误，让调用者知道转换失败
+        throw e;
+      }
     }
 
     // ========== 诵读文案功能 ==========
@@ -5309,17 +4994,592 @@ async function retryTask(digitalHumanId) {
     
     // 预览诵读文案语音
     async function previewReciteScript() {
-      const script = document.getElementById('reciteScript')?.value.trim();
+      const provider = selectedRecitePlatform || 'heygen';
+      let script = '';
+      
+      if (provider === 'heygen') {
+        script = document.getElementById('reciteScript')?.value.trim() || '';
+      } else {
+        script = document.getElementById('reciteScriptYunwu')?.value.trim() || '';
+      }
+      
       if (!script) {
         alert('请先输入文案内容');
         return;
       }
-      alert('语音预览功能开发中...\n\n提示：您可以直接生成视频查看效果。');
+      
+      if (provider === 'yunwu') {
+        alert('云雾平台使用音频文件生成视频，不支持文案预览。\n\n提示：您可以直接生成视频查看效果。');
+      } else {
+        alert('语音预览功能开发中...\n\n提示：您可以直接生成视频查看效果。');
+      }
     }
     
-    // 创建诵读文案视频（使用统一接口，支持云雾API和HeyGen两种方式）
-    async function createReciteVideo() {
-      const script = document.getElementById('reciteScript')?.value.trim();
+    // ========== 新流程：选择音频 -> 选择视频 -> 生成视频 ==========
+    
+    // 全局变量：存储选择的音频和视频信息
+    let reciteSelectedAudio = {
+      type: null, // 'uploaded', 'synthesized'
+      url: null,
+      id: null,
+      name: null,
+      base64: null // 仅在localhost:3000时使用
+    };
+    
+    let reciteSelectedVideo = {
+      id: null,
+      url: null,
+      name: null
+    };
+    
+    // reciteGeneratedAudioId / reciteAudioMode 已在 state.js 中定义
+    
+    // 切换音频模式（上传 / TTS 合成）
+    function switchReciteAudioMode(mode) {
+      if (mode !== 'upload' && mode !== 'synthesize') return;
+      
+      reciteAudioMode = mode;
+      
+      const synthesizeBtn = document.getElementById('reciteSwitchToSynthesizeBtn');
+      const synthesizeMode = document.getElementById('reciteSynthesizeAudioMode');
+      
+      if (mode === 'upload') {
+        if (synthesizeBtn) {
+          synthesizeBtn.classList.remove('primary');
+          synthesizeBtn.classList.add('secondary');
+        }
+        if (synthesizeMode) synthesizeMode.style.display = 'none';
+      } else {
+        if (synthesizeBtn) {
+          synthesizeBtn.classList.remove('secondary');
+          synthesizeBtn.classList.add('primary');
+        }
+        if (synthesizeMode) synthesizeMode.style.display = 'block';
+      }
+    }
+    
+    // 检测是否为本地测试环境
+    function isLocalhost() {
+      try {
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        return hostname === 'localhost' && port === '3000';
+      } catch (e) {
+        return false;
+      }
+    }
+    
+    // 将文件转换为Base64
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result;
+          // 移除data:audio/xxx;base64,前缀，只保留纯base64
+          const commaIndex = base64.indexOf(',');
+          const pureBase64 = commaIndex >= 0 ? base64.substring(commaIndex + 1) : base64;
+          resolve(pureBase64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    // 诵读文案：上传视频（双卡片之一）
+    async function handleReciteVideoUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('video/')) {
+        alert('请选择视频文件');
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) {
+        alert('视频文件大小不能超过100MB');
+        return;
+      }
+      
+      try {
+        showLoading(true, '正在上传视频...');
+        const uploadedUrl = await uploadVideoFile(file);
+        reciteSelectedVideo = {
+          id: null,
+          url: uploadedUrl,
+          name: file.name
+        };
+        const videoUrlInput = document.getElementById('reciteVideoUrlInput');
+        if (videoUrlInput) videoUrlInput.value = uploadedUrl;
+        const videoIdInput = document.getElementById('reciteVideoIdInput');
+        if (videoIdInput) videoIdInput.value = '';
+        updateReciteSelectedVideoUI();
+      } catch (err) {
+        alert('视频上传失败：' + (err.message || '未知错误'));
+      } finally {
+        showLoading(false);
+      }
+      event.target.value = '';
+    }
+    
+    // 诵读文案：清除已选视频
+    function clearReciteSelectedVideo() {
+      reciteSelectedVideo = { id: null, url: null, name: null };
+      const videoIdInput = document.getElementById('reciteVideoIdInput');
+      const videoUrlInput = document.getElementById('reciteVideoUrlInput');
+      const videoInput = document.getElementById('reciteVideoInput');
+      if (videoIdInput) videoIdInput.value = '';
+      if (videoUrlInput) videoUrlInput.value = '';
+      if (videoInput) videoInput.value = '';
+      updateReciteSelectedVideoUI();
+    }
+    
+    // 诵读文案：历史创作（视频）
+    function showReciteVideoHistory() {
+      if (typeof window.showYunwuVideoHistory === 'function') {
+        window.showYunwuVideoHistory();
+      } else {
+        alert('历史创作功能开发中...');
+      }
+    }
+    
+    // 诵读文案：历史创作（音频）
+    function showReciteAudioHistory() {
+      if (typeof window.showYunwuAudioHistory === 'function') {
+        window.showYunwuAudioHistory();
+      } else {
+        alert('历史创作功能开发中...');
+      }
+    }
+    
+    // 诵读文案：选择数字人弹窗（内容固定于弹窗内，无步骤2）
+    function openReciteSelectDigitalHumanModal() {
+      var modal = document.getElementById('reciteSelectDigitalHumanModal');
+      if (!modal) return;
+      modal.classList.add('active');
+      if (typeof window.loadReciteAvatars === 'function') {
+        window.loadReciteAvatars();
+      }
+      modal.onclick = function (e) {
+        if (e.target === modal) closeReciteSelectDigitalHumanModal();
+      };
+    }
+    
+    function closeReciteSelectDigitalHumanModal() {
+      var modal = document.getElementById('reciteSelectDigitalHumanModal');
+      if (modal) modal.classList.remove('active');
+    }
+    
+    // 诵读文案：使用 TTS 合成音频弹窗
+    function openReciteTTSModal() {
+      var modal = document.getElementById('reciteTTSModal');
+      if (!modal) return;
+      var form = document.getElementById('reciteSynthesizeAudioMode');
+      if (form) form.style.display = 'block';
+      modal.classList.add('active');
+      if (typeof window.loadYunwuTTSVoices === 'function') {
+        window.loadYunwuTTSVoices();
+      }
+      modal.onclick = function (e) {
+        if (e.target === modal) closeReciteTTSModal();
+      };
+    }
+    
+    function closeReciteTTSModal() {
+      var modal = document.getElementById('reciteTTSModal');
+      if (modal) modal.classList.remove('active');
+    }
+    
+    // 诵读文案底部栏：下拉框滑动按钮（打开时移到 body + fixed 定位，避免被父级 overflow 裁剪）
+    function toggleReciteSliderDropdown(id) {
+      var dropdownId = id === 'reciteSoundVolume' ? 'reciteSoundVolumeDropdown' : 'reciteOriginalAudioVolumeDropdown';
+      var btnId = id === 'reciteSoundVolume' ? 'reciteSoundVolumeBtn' : 'reciteOriginalAudioVolumeBtn';
+      var dropdown = document.getElementById(dropdownId);
+      var btn = document.getElementById(btnId);
+      var otherId = id === 'reciteSoundVolume' ? 'reciteOriginalAudioVolumeDropdown' : 'reciteSoundVolumeDropdown';
+      var otherDropdown = document.getElementById(otherId);
+      if (!dropdown || !btn) return;
+      if (otherDropdown && otherDropdown.classList.contains('open')) {
+        closeReciteSliderDropdown(otherDropdown);
+      }
+      if (dropdown.classList.contains('open')) {
+        closeReciteSliderDropdown(dropdown);
+        return;
+      }
+      var rect = btn.getBoundingClientRect();
+      dropdown._reciteOriginalParent = dropdown.parentNode;
+      document.body.appendChild(dropdown);
+      dropdown.style.position = 'fixed';
+      dropdown.style.left = rect.left + 'px';
+      dropdown.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+      dropdown.style.right = 'auto';
+      dropdown.style.top = 'auto';
+      dropdown.style.minWidth = Math.max(rect.width, 160) + 'px';
+      dropdown.style.zIndex = '9999';
+      dropdown.classList.add('open');
+    }
+    
+    function closeReciteSliderDropdown(dropdownEl) {
+      if (!dropdownEl) return;
+      dropdownEl.classList.remove('open');
+      dropdownEl.style.position = '';
+      dropdownEl.style.left = '';
+      dropdownEl.style.bottom = '';
+      dropdownEl.style.minWidth = '';
+      dropdownEl.style.zIndex = '';
+      if (dropdownEl._reciteOriginalParent) {
+        dropdownEl._reciteOriginalParent.appendChild(dropdownEl);
+        dropdownEl._reciteOriginalParent = null;
+      }
+    }
+    
+    var _reciteSliderDropdownCloseBound = false;
+    function initReciteSliderDropdownClose() {
+      if (_reciteSliderDropdownCloseBound) return;
+      _reciteSliderDropdownCloseBound = true;
+      document.addEventListener('click', function (e) {
+        var dd1 = document.getElementById('reciteSoundVolumeDropdown');
+        var dd2 = document.getElementById('reciteOriginalAudioVolumeDropdown');
+        var btn1 = document.getElementById('reciteSoundVolumeBtn');
+        var btn2 = document.getElementById('reciteOriginalAudioVolumeBtn');
+        var inside = (dd1 && (dd1.contains(e.target) || (btn1 && btn1.contains(e.target)))) ||
+          (dd2 && (dd2.contains(e.target) || (btn2 && btn2.contains(e.target))));
+        if (!inside) {
+          if (dd1) closeReciteSliderDropdown(dd1);
+          if (dd2) closeReciteSliderDropdown(dd2);
+        }
+      });
+    }
+    
+    function initReciteBottomBarSliders() {
+      var soundSlider = document.getElementById('reciteSoundVolume');
+      var soundValueEl = document.getElementById('reciteSoundVolumeValue');
+      var originalSlider = document.getElementById('reciteOriginalAudioVolume');
+      var originalValueEl = document.getElementById('reciteOriginalAudioVolumeValue');
+      function updateSoundValue() {
+        if (soundValueEl && soundSlider) soundValueEl.textContent = soundSlider.value;
+      }
+      function updateOriginalValue() {
+        if (originalValueEl && originalSlider) originalValueEl.textContent = originalSlider.value;
+      }
+      if (soundSlider) {
+        soundSlider.addEventListener('input', updateSoundValue);
+        updateSoundValue();
+      }
+      if (originalSlider) {
+        originalSlider.addEventListener('input', updateOriginalValue);
+        updateOriginalValue();
+      }
+      initReciteSliderDropdownClose();
+    }
+    
+    // 步骤1：上传音频
+    async function handleReciteAudioUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('audio/')) {
+        alert('请选择音频文件');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert('音频文件大小不能超过5MB');
+        return;
+      }
+      
+      const isLocal = isLocalhost();
+      
+      showLoading(true, isLocal ? '正在处理音频（Base64）...' : '正在上传音频（URL）...');
+      
+      try {
+        if (isLocal) {
+          // 本地测试环境：使用纯Base64
+          const base64 = await fileToBase64(file);
+          reciteSelectedAudio = {
+            type: 'uploaded',
+            url: null,
+            id: null,
+            name: file.name,
+            base64: base64
+          };
+          
+          updateReciteSelectedAudioUI();
+          showLoading(false);
+          alert('✅ 音频已处理（Base64模式）！');
+        } else {
+          // 生产环境：使用URL
+          const audioUrl = await uploadAudioFile(file);
+          reciteSelectedAudio = {
+            type: 'uploaded',
+            url: audioUrl,
+            id: null,
+            name: file.name,
+            base64: null
+          };
+          
+          updateReciteSelectedAudioUI();
+          showLoading(false);
+          alert('✅ 音频上传成功（URL模式）！');
+        }
+      } catch (error) {
+        showLoading(false);
+        alert('❌ 处理失败：' + error.message);
+      }
+      
+      event.target.value = '';
+    }
+    
+    // 步骤1：显示音频模板列表
+    function showReciteAudioTemplates() {
+      const modal = document.getElementById('reciteAudioTemplatesModal');
+      const list = document.getElementById('reciteAudioTemplatesList');
+      
+      if (!modal || !list) return;
+      
+      // 从server.js的TTS_VOICES_SEED获取模板列表（中文音色）
+      const templates = [
+        { name: '阳光少年', file: 'genshin_vindi2.mp3' },
+        { name: '懂事小弟', file: 'zhinen_xuesheng.mp3' },
+        { name: '运动少年', file: 'tiyuxi_xuedi.mp3' },
+        { name: '青春少女', file: 'ai_shatang.mp3' },
+        { name: '温柔小妹', file: 'genshin_klee2.mp3' },
+        { name: '元气少女', file: 'genshin_kirara.mp3' },
+        { name: '阳光男生', file: 'ai_kaiya.mp3' },
+        { name: '幽默小哥', file: 'tiexin_nanyou.mp3' },
+        { name: '文艺小哥', file: 'ai_chenjiahao_712.mp3' },
+        { name: '甜美邻家', file: 'girlfriend_1_speech02.mp3' },
+        { name: '温柔姐姐', file: 'chat1_female_new-3.mp3' },
+        { name: '职场女青', file: 'girlfriend_2_speech02.mp3' },
+        { name: '活泼男童', file: 'cartoon-boy-07.mp3' },
+        { name: '俏皮女童', file: 'cartoon-girl-01.mp3' },
+        { name: '稳重老爸', file: 'ai_huangyaoshi_712.mp3' },
+        { name: '温柔妈妈', file: 'you_pingjing.mp3' },
+        { name: '严肃上司', file: 'ai_laoguowang_712.mp3' },
+        { name: '优雅贵妇', file: 'chengshu_jiejie.mp3' }
+      ];
+      
+      list.innerHTML = templates.map(t => `
+        <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; cursor: pointer; border: 1px solid var(--border);" 
+             onclick="selectReciteAudioTemplate('${t.file}', '${t.name}')">
+          <div style="font-weight: 600; margin-bottom: 4px;">${t.name}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">${t.file}</div>
+        </div>
+      `).join('');
+      
+      modal.style.display = 'block';
+    }
+    
+    // 步骤1：隐藏音频模板列表
+    function hideReciteAudioTemplates() {
+      const modal = document.getElementById('reciteAudioTemplatesModal');
+      if (modal) modal.style.display = 'none';
+    }
+    
+    // 步骤1：选择音频模板
+    async function selectReciteAudioTemplate(fileName, templateName) {
+      const audioUrl = buildApiUrl(`/tts-demos/${encodeURIComponent(fileName)}`);
+      
+      reciteSelectedAudio = {
+        type: 'template',
+        url: audioUrl,
+        id: null,
+        name: templateName + ' (' + fileName + ')'
+      };
+      
+      updateReciteSelectedAudioUI();
+      hideReciteAudioTemplates();
+    }
+    
+    // 更新步骤1选择的音频UI；预览显示在上传框内
+    function updateReciteSelectedAudioUI() {
+      const defaultEl = document.getElementById('reciteAudioCardDefault');
+      const info = document.getElementById('reciteSelectedAudioInfo');
+      const name = document.getElementById('reciteSelectedAudioName');
+      const preview = document.getElementById('reciteSelectedAudioPreview');
+      
+      if (!info || !name || !preview) return;
+      
+      if (reciteSelectedAudio.type && (reciteSelectedAudio.url || reciteSelectedAudio.id || reciteSelectedAudio.base64)) {
+        name.textContent = reciteSelectedAudio.name || '已选择音频';
+        if (reciteSelectedAudio.id) {
+          // 优先显示音频ID
+          name.textContent += ` (音频ID: ${reciteSelectedAudio.id})`;
+        }
+        if (reciteSelectedAudio.url) {
+          preview.src = reciteSelectedAudio.url;
+          preview.style.display = 'block';
+        } else if (reciteSelectedAudio.base64) {
+          // Base64模式：构造data URL
+          preview.src = 'data:audio/mpeg;base64,' + reciteSelectedAudio.base64;
+          preview.style.display = 'block';
+        } else if (reciteSelectedAudio.id) {
+          // 如果有ID但没有URL，不显示预览
+          preview.style.display = 'none';
+        }
+        if (defaultEl) defaultEl.style.display = 'none';
+        info.style.display = 'flex';
+      } else {
+        if (defaultEl) defaultEl.style.display = '';
+        info.style.display = 'none';
+      }
+    }
+    
+    // 清除步骤1选择的音频
+    function clearReciteSelectedAudio() {
+      reciteSelectedAudio = { type: null, url: null, id: null, name: null, base64: null };
+      updateReciteSelectedAudioUI();
+    }
+    
+    // ✅ 规范化任务状态（参考AI创作工坊）
+    function normalizeReciteTaskStatus(s) {
+      const t = (s || '').toString().toLowerCase();
+      if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].indexOf(t) >= 0) return 'done';
+      if (['fail', 'failed', 'error'].indexOf(t) >= 0) return 'failed';
+      return 'processing';
+    }
+    
+    // ✅ 收集音频URL（参考AI创作工坊）
+    function collectReciteAudioUrls(obj, out) {
+      if (!obj || typeof obj !== 'object') return;
+      const urlKeys = ['audio', 'url', 'audios', 'audio_url', 'output_audio', 'result_url', 'output_url', 'audioUrl', 'url_mp3', 'url_wav'];
+      urlKeys.forEach(function (k) {
+        const v = obj[k];
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) out.push(v);
+        else if (Array.isArray(v)) v.forEach(function (u) {
+          if (typeof u === 'string' && /^https?:\/\//i.test(u)) out.push(u);
+          else if (u && u.url) out.push(u.url);
+          else if (u && u.url_mp3) out.push(u.url_mp3);
+          else if (u && u.url_wav) out.push(u.url_wav);
+        });
+      });
+      Object.keys(obj).forEach(function (k) {
+        collectReciteAudioUrls(obj[k], out);
+      });
+    }
+    
+    // ✅ 轮询TTS任务状态（参考AI创作工坊）
+    function pollReciteTtsTask(taskId, apiKey, setProgress, resolve, reject, pollCount) {
+      pollCount = pollCount || 0;
+      const maxPolls = 240; // 最多轮询240次（约10分钟）
+      
+      if (pollCount >= maxPolls) {
+        reject(new Error('任务超时（约 10 分钟仍未返回资源），请稍后重试'));
+        return;
+      }
+      
+      const url = buildApiUrl(`/api/yunwu/audio/tts/${encodeURIComponent(taskId)}`);
+      
+      fetch(url, {
+        method: 'GET',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          // 检查API错误
+          if (data && data.success === false && data.message) {
+            reject(new Error(data.message));
+            return;
+          }
+          
+          // 解析响应数据
+          const inner = (data && data.data && data.data.data) || data.data || data;
+          const statusRaw = (inner && inner.task_status) ||
+            (inner && inner.status) ||
+            (inner && inner.state) ||
+            (data && data.data && data.data.task_status) ||
+            (data && data.data && data.data.status) ||
+            (data && data.data && data.data.state) ||
+            (data && data.task_status) ||
+            (data && data.status) ||
+            (data && data.data && data.data.task_result && data.data.task_result.task_status) ||
+            '';
+          
+          const status = normalizeReciteTaskStatus(statusRaw);
+          
+          // 解析任务结果
+          const result = (inner && inner.task_result) ||
+            (data && data.data && data.data.task_result) ||
+            (data && data.data && data.data.result) ||
+            (data && data.data && data.data) ||
+            (data && data.result) ||
+            (data && data.data) ||
+            {};
+          
+          // 收集音频URL
+          const audios = [];
+          if (result.audios && Array.isArray(result.audios)) {
+            result.audios.forEach(function (a) {
+              if (a && typeof a.url_mp3 === 'string' && a.url_mp3.trim()) audios.push(a.url_mp3.trim());
+              if (a && typeof a.url_wav === 'string' && a.url_wav.trim()) audios.push(a.url_wav.trim());
+              if (a && typeof a.url === 'string' && a.url.trim()) audios.push(a.url.trim());
+            });
+          }
+          if (!audios.length && (result.audio || result.audioUrl || result.audio_url)) {
+            const a = result.audio || result.audioUrl || result.audio_url;
+            if (typeof a === 'string') audios.push(a);
+            else if (a && a.url) audios.push(a.url);
+          }
+          if (!audios.length && result.url) {
+            const url = typeof result.url === 'string' ? result.url : (result.url && result.url.url);
+            if (url && /\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(url)) audios.push(url);
+          }
+          if (!audios.length && data && data.data) {
+            const d = data.data.data || data.data;
+            if (d && d.audio_url && typeof d.audio_url === 'string') audios.push(d.audio_url);
+            if (d && d.url && typeof d.url === 'string' && /\.(mp3|wav|m4a|aac)(\?|#|$)/i.test(d.url)) audios.push(d.url);
+            if (d && d.audio && typeof d.audio === 'string') audios.push(d.audio);
+          }
+          if (!audios.length) collectReciteAudioUrls(data, audios);
+          const uniqueAudios = [...new Set(audios.filter(Boolean))];
+          
+          // 获取音频ID
+          const audioId = (result && result.audio_id) ||
+            (result && result.audios && result.audios[0] && result.audios[0].id) ||
+            (data && data.data && data.data.audio_id) ||
+            (inner && inner.task_result && inner.task_result.audios && inner.task_result.audios[0] && inner.task_result.audios[0].id) ||
+            (data && data.data && data.data.task_result && data.data.task_result.audios && data.data.task_result.audios[0] && data.data.task_result.audios[0].id) ||
+            (data && data.audio_id) ||
+            '';
+          
+          // 任务完成且有音频
+          if (status === 'done' && uniqueAudios.length > 0) {
+            resolve({ audioUrl: uniqueAudios[0], audioId: audioId, raw: data });
+            return;
+          }
+          
+          // 任务完成但无音频URL（继续轮询等待）
+          const hasAudiosArray = result.audios && Array.isArray(result.audios) && result.audios.length > 0;
+          if (status === 'done' && !uniqueAudios.length && hasAudiosArray) {
+            const progressText = '状态已完成，等待音频生成，继续轮询…（' + (pollCount + 1) + '/' + maxPolls + '）';
+            if (typeof setProgress === 'function') setProgress(progressText);
+            setTimeout(function () { pollReciteTtsTask(taskId, apiKey, setProgress, resolve, reject, pollCount + 1); }, 2500);
+            return;
+          }
+          
+          // 任务完成但无音频URL（继续轮询）
+          if (status === 'done' && !uniqueAudios.length) {
+            const progressText = '状态已完成，等待音频生成，继续轮询…（' + (pollCount + 1) + '/' + maxPolls + '）';
+            if (typeof setProgress === 'function') setProgress(progressText);
+            setTimeout(function () { pollReciteTtsTask(taskId, apiKey, setProgress, resolve, reject, pollCount + 1); }, 2500);
+            return;
+          }
+          
+          // 任务失败
+          if (status === 'failed') {
+            reject(new Error((result.message || result.error || data.message || data.error || '任务失败') + ''));
+            return;
+          }
+          
+          // 任务处理中，继续轮询
+          const progressText = '轮询中，状态=' + (statusRaw || '处理中') + (pollCount > 0 ? '（' + (pollCount + 1) + '/' + maxPolls + '）' : '');
+          if (typeof setProgress === 'function') setProgress(progressText);
+          setTimeout(function () { pollReciteTtsTask(taskId, apiKey, setProgress, resolve, reject, pollCount + 1); }, 2500);
+        })
+        .catch(reject);
+    }
+    
+    // 步骤1：生成音频（TTS）
+    async function reciteGenerateAudio() {
+      const script = document.getElementById('reciteScriptYunwu')?.value.trim() || '';
       if (!script) {
         alert('请输入文案内容');
         return;
@@ -5330,71 +5590,1307 @@ async function retryTask(digitalHumanId) {
         return;
       }
       
+      const voiceSelect = document.getElementById('reciteYunwuVoiceSelect');
+      const languageSelect = document.getElementById('reciteYunwuVoiceLanguage');
+      const speedInput = document.getElementById('reciteYunwuVoiceSpeed');
+      
+      const voiceId = voiceSelect?.value || 'genshin_vindi2';
+      const voiceLanguage = languageSelect?.value || 'zh';
+      let voiceSpeed = parseFloat(speedInput?.value || '1.0');
+      
+      // 验证语速范围
+      if (isNaN(voiceSpeed) || voiceSpeed < 0.5 || voiceSpeed > 2.0) {
+        voiceSpeed = 1.0;
+      }
+      
+      const apiKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
+      if (!apiKey) {
+        alert('请先登录，由管理员在后台为您分配云雾 API Key 后即可使用');
+        return;
+      }
+      
+      showLoading(true, '正在提交语音合成任务...');
+      
+      try {
+        // 提交TTS任务
+        const ttsResponse = await fetch(buildApiUrl('/api/yunwu/audio/tts'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: apiKey,
+            text: script,
+            voice_id: voiceId,
+            voice_language: voiceLanguage,
+            voice_speed: voiceSpeed
+          })
+        });
+        
+        // 解析响应（参考AI创作工坊的处理方式）
+        let ttsResult;
+        try {
+          const responseText = await ttsResponse.text();
+          ttsResult = responseText ? JSON.parse(responseText) : null;
+        } catch (e) {
+          ttsResult = null;
+        }
+        
+        // 检查HTTP错误
+        if (!ttsResponse.ok) {
+          let msg = (ttsResult && (ttsResult.message || ttsResult.error || (ttsResult.error && ttsResult.error.message))) || 
+                    ('HTTP ' + ttsResponse.status);
+          const lowerMsg = (msg || '').toString().toLowerCase();
+          if (lowerMsg.indexOf('invalid token') !== -1) {
+            msg = '登录状态已失效或云雾 API Key 无效。\n\n请重新登录系统，或联系管理员在「API Key 配置」中为您分配有效的云雾 Key。';
+          }
+          showLoading(false);
+          alert('❌ 语音合成失败：' + msg);
+          return;
+        }
+        
+        if (!ttsResult) {
+          showLoading(false);
+          alert('❌ 语音合成失败：响应解析失败');
+          return;
+        }
+        
+        // 获取任务ID（参考AI创作工坊）
+        const taskId = (ttsResult && ttsResult.data && (ttsResult.data.id || ttsResult.data.task_id || ttsResult.data.request_id)) ||
+          (ttsResult && ttsResult.id) || 
+          (ttsResult && ttsResult.task_id) || 
+          (ttsResult && ttsResult.request_id) ||
+          (ttsResult && ttsResult.data && ttsResult.data.request_id);
+        
+        // 检查是否直接返回了音频URL或ID
+        const directAudioUrl = ttsResult.data?.url || ttsResult.data?.audio_url || null;
+        const directAudioId = ttsResult.data?.audio_id || ttsResult.data?.id || null;
+        
+        let finalAudioUrl = directAudioUrl;
+        let finalAudioId = directAudioId;
+        
+        // 如果需要轮询（有任务ID但没有直接返回音频）
+        if (taskId && !finalAudioUrl && !finalAudioId) {
+          showLoading(true, '任务已创建，轮询中: ' + taskId + ' …');
+          
+          const setProgress = function (txt) {
+            showLoading(true, txt);
+          };
+          
+          try {
+            const pollResult = await new Promise(function (resolve, reject) {
+              pollReciteTtsTask(taskId, apiKey, setProgress, resolve, reject, 0);
+            });
+            
+            finalAudioUrl = pollResult.audioUrl || null;
+            finalAudioId = pollResult.audioId || null;
+          } catch (pollError) {
+            showLoading(false);
+            alert('❌ 轮询失败：' + (pollError.message || pollError.toString()));
+            return;
+          }
+        } else if (!taskId && !finalAudioUrl && !finalAudioId) {
+          // 既没有任务ID也没有音频URL/ID
+          let errMsg = (ttsResult && (ttsResult.message || ttsResult.error || (ttsResult.error && ttsResult.error.message))) || 
+                       '未返回任务 ID 或音频资源，请检查 API 响应';
+          const lowerErr = (errMsg || '').toString().toLowerCase();
+          if (lowerErr.indexOf('invalid token') !== -1) {
+            errMsg = '登录状态已失效或云雾 API Key 无效。\n\n请重新登录系统，或联系管理员在「API Key 配置」中为您分配有效的云雾 Key。';
+          }
+          showLoading(false);
+          alert('❌ 语音合成失败：' + errMsg);
+          return;
+        }
+        
+        if (!finalAudioUrl && !finalAudioId) {
+          showLoading(false);
+          alert('❌ 未获取到音频URL或ID');
+          return;
+        }
+        
+        // 显示生成的音频
+        const info = document.getElementById('reciteGeneratedAudioInfo');
+        const preview = document.getElementById('reciteGeneratedAudioPreview');
+        const idDisplay = document.getElementById('reciteGeneratedAudioIdDisplay');
+        const idText = document.getElementById('reciteGeneratedAudioIdText');
+        const idInput = document.getElementById('reciteAudioIdInput');
+        const useBtn = document.getElementById('reciteUseGeneratedAudioBtn');
+        
+        // 保存音频ID
+        reciteGeneratedAudioId = finalAudioId || null;
+        
+        // 显示音频ID在按钮右侧
+        if (idDisplay && idText) {
+          if (finalAudioId) {
+            idText.textContent = finalAudioId;
+            idDisplay.style.display = 'block';
+            // 同时更新输入框
+            if (idInput) {
+              idInput.value = finalAudioId;
+            }
+          } else {
+            idDisplay.style.display = 'none';
+          }
+        }
+        
+        // 显示音频预览和使用按钮
+        if (info && preview && useBtn) {
+          if (finalAudioUrl) {
+            preview.src = finalAudioUrl;
+            info.style.display = 'block';
+            useBtn.style.display = 'block';
+          } else if (finalAudioId) {
+            // 只有ID没有URL时，也显示使用按钮
+            info.style.display = 'none';
+            useBtn.style.display = 'block';
+          }
+        }
+        
+        // ✅ 保存到作品管理
+        const audioWorkId = Date.now().toString();
+        const audioWork = {
+          id: audioWorkId,
+          type: 'tts', // 语音合成类型
+          title: script.substring(0, 50) + (script.length > 50 ? '...' : ''),
+          script: script,
+          platform: 'yunwu',
+          taskId: taskId || null,
+          status: 'completed',
+          progress: 100,
+          audioUrl: finalAudioUrl || null,
+          audioId: finalAudioId || null,
+          videoUrl: null,
+          videoId: null,
+          voiceId: voiceId,
+          voiceLanguage: voiceLanguage,
+          voiceSpeed: voiceSpeed,
+          createDate: new Date().toISOString(),
+          updateDate: new Date().toISOString()
+        };
+        
+        const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+        works.unshift(audioWork);
+        if (works.length > 100) works.length = 100;
+        localStorage.setItem('cn_dh_works', JSON.stringify(works));
+        
+        // 如果作品管理面板已打开，刷新列表
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
+        }
+        
+        showLoading(false);
+        if (finalAudioId) {
+          alert('✅ 音频生成成功！音频ID: ' + finalAudioId + '\n\n请试听后决定是否使用此音频，或直接使用音频ID进行对口型。\n\n音频已自动保存到「作品管理」中。');
+        } else {
+          alert('✅ 音频生成成功！请试听后决定是否使用此音频。\n\n音频已自动保存到「作品管理」中。');
+        }
+      } catch (error) {
+        showLoading(false);
+        alert('❌ 生成失败：' + (error.message || error.toString()));
+      }
+    }
+    
+    // 步骤1：使用合成的音频
+    function reciteUseGeneratedAudio() {
+      const preview = document.getElementById('reciteGeneratedAudioPreview');
+      
+      if (!reciteGeneratedAudioId && (!preview || !preview.src)) {
+        alert('❌ 未找到可用的音频ID或URL');
+        return;
+      }
+      
+      reciteSelectedAudio = {
+        type: 'synthesized',
+        url: preview ? (preview.src || null) : null,
+        id: reciteGeneratedAudioId,
+        name: 'AI合成的音频',
+        base64: null
+      };
+      
+      updateReciteSelectedAudioUI();
+      alert('✅ 已选择合成的音频（音频ID: ' + (reciteGeneratedAudioId || '未知') + '）！');
+    }
+    
+    // ✅ 使用输入的音频ID
+    function reciteUseAudioId() {
+      const idInput = document.getElementById('reciteAudioIdInput');
+      if (!idInput) return;
+      
+      const audioId = idInput.value.trim();
+      if (!audioId) {
+        alert('❌ 请输入音频ID');
+        return;
+      }
+      
+      // 验证音频ID格式（通常是数字或字符串）
+      if (audioId.length < 1) {
+        alert('❌ 音频ID格式不正确');
+        return;
+      }
+      
+      reciteSelectedAudio = {
+        type: 'id',
+        url: null,
+        id: audioId,
+        name: '手动输入的音频ID',
+        base64: null
+      };
+      
+      // 同时更新全局变量
+      reciteGeneratedAudioId = audioId;
+      
+      updateReciteSelectedAudioUI();
+      alert('✅ 已选择音频ID: ' + audioId + '\n\n可直接进行对口型操作。');
+    }
+    
+    // 暴露函数到window
+    window.reciteUseAudioId = reciteUseAudioId;
+    
+    // 步骤3：更新选择的视频UI（仅显示ID，避免显示长URL）；预览显示在上传框内
+    function updateReciteSelectedVideoUI() {
+      const defaultEl = document.getElementById('reciteVideoCardDefault');
+      const info = document.getElementById('reciteSelectedVideoInfo');
+      const name = document.getElementById('reciteSelectedVideoName');
+      const preview = document.getElementById('reciteSelectedVideoPreview');
+      
+      if (!info || !name || !preview) return;
+      
+      if (reciteSelectedVideo.id || reciteSelectedVideo.url) {
+        // ✅ 优先显示视频ID，避免显示长URL导致431错误
+        if (reciteSelectedVideo.id) {
+          name.textContent = reciteSelectedVideo.name || `视频ID: ${reciteSelectedVideo.id}`;
+        } else if (reciteSelectedVideo.url) {
+          // 如果有URL但没有ID，只显示简短提示，不显示完整URL
+          name.textContent = reciteSelectedVideo.name || '已选择视频（URL格式）';
+        } else {
+          name.textContent = reciteSelectedVideo.name || '已选择视频';
+        }
+        
+        // 预览视频（如果有URL）
+        if (reciteSelectedVideo.url && (reciteSelectedVideo.url.startsWith('http://') || reciteSelectedVideo.url.startsWith('https://'))) {
+          preview.src = reciteSelectedVideo.url;
+          preview.style.display = 'block';
+        } else {
+          preview.style.display = 'none';
+        }
+        
+        if (defaultEl) defaultEl.style.display = 'none';
+        info.style.display = 'flex';
+      } else {
+        if (defaultEl) defaultEl.style.display = '';
+        info.style.display = 'none';
+      }
+    }
+    
+    // 监听视频输入变化
+    function initReciteVideoInputs() {
+      const videoIdInput = document.getElementById('reciteVideoIdInput');
+      const videoUrlInput = document.getElementById('reciteVideoUrlInput');
+      
+      if (videoIdInput) {
+        videoIdInput.addEventListener('blur', function() {
+          const value = this.value.trim();
+          if (value) {
+            reciteSelectedVideo.id = value;
+            reciteSelectedVideo.url = null;
+            reciteSelectedVideo.name = `视频ID: ${value}`;
+            updateReciteSelectedVideoUI();
+          }
+        });
+      }
+      
+      if (videoUrlInput) {
+        videoUrlInput.addEventListener('blur', function() {
+          const value = this.value.trim();
+          if (value && (value.startsWith('http://') || value.startsWith('https://'))) {
+            reciteSelectedVideo.id = null;
+            reciteSelectedVideo.url = value;
+            reciteSelectedVideo.name = `视频URL: ${value.substring(0, 50)}...`;
+            updateReciteSelectedVideoUI();
+          }
+        });
+      }
+    }
+    
+    // ✅ 轮询人脸识别任务状态（参考AI创作工坊）
+    function pollReciteIdentifyFaceTask(taskId, apiKey, setProgress, resolve, reject, pollCount) {
+      pollCount = pollCount || 0;
+      const maxPolls = 120; // 最多轮询120次（约5分钟）
+      
+      if (pollCount >= maxPolls) {
+        reject(new Error('人脸识别任务超时（约 5 分钟仍未返回结果），请稍后重试'));
+        return;
+      }
+      
+      const url = buildApiUrl(`/api/yunwu/videos/identify-face/${encodeURIComponent(taskId)}`);
+      
+      fetch(url, {
+        method: 'GET',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          // 检查API错误
+          if (data && data.success === false && data.message) {
+            reject(new Error(data.message));
+            return;
+          }
+          
+          // 解析响应数据（参考AI创作工坊）
+          const inner = (data && data.data && data.data.data) || data.data || data;
+          const statusRaw = (inner && inner.task_status) ||
+            (inner && inner.status) ||
+            (inner && inner.state) ||
+            (data && data.data && data.data.task_status) ||
+            (data && data.data && data.data.status) ||
+            (data && data.data && data.data.state) ||
+            (data && data.task_status) ||
+            (data && data.status) ||
+            (data && data.data && data.data.task_result && data.data.task_result.task_status) ||
+            '';
+          
+          const status = normalizeReciteTaskStatus(statusRaw);
+          
+          // 解析任务结果
+          const result = (inner && inner.task_result) ||
+            (data && data.data && data.data.task_result) ||
+            (data && data.data && data.data.result) ||
+            (data && data.data && data.data) ||
+            (data && data.result) ||
+            (data && data.data) ||
+            {};
+          
+          // 获取session_id和face_data
+          const sessionId = (result && result.session_id) ||
+            (inner && inner.session_id) ||
+            (data && data.data && data.data.session_id) ||
+            (data && data.session_id) ||
+            '';
+          
+          const faceData = (result && result.face_data) ||
+            (result && result.faces) ||
+            (inner && inner.face_data) ||
+            (inner && inner.faces) ||
+            (data && data.data && data.data.face_data) ||
+            (data && data.data && data.data.faces) ||
+            (data && data.face_data) ||
+            (data && data.faces) ||
+            [];
+          
+          const faces = Array.isArray(faceData) ? faceData : (faceData && typeof faceData === 'object' ? [faceData] : []);
+          
+          // 任务完成且有session_id
+          if (status === 'done' && sessionId) {
+            const faceId = faces.length > 0 ? (faces[0].face_id != null ? String(faces[0].face_id) : '-1') : '-1';
+            resolve({ sessionId: sessionId, faces: faces, faceId: faceId, raw: data });
+            return;
+          }
+          
+          // 任务完成但无session_id（继续轮询等待）
+          if (status === 'done' && !sessionId) {
+            const progressText = '状态已完成，等待人脸识别结果，继续轮询…（' + (pollCount + 1) + '/' + maxPolls + '）';
+            if (typeof setProgress === 'function') setProgress(progressText);
+            setTimeout(function () { pollReciteIdentifyFaceTask(taskId, apiKey, setProgress, resolve, reject, pollCount + 1); }, 2500);
+            return;
+          }
+          
+          // 任务失败
+          if (status === 'failed') {
+            reject(new Error((result.message || result.error || data.message || data.error || '人脸识别任务失败') + ''));
+            return;
+          }
+          
+          // 任务处理中，继续轮询
+          const progressText = '轮询中，状态=' + (statusRaw || '处理中') + (pollCount > 0 ? '（' + (pollCount + 1) + '/' + maxPolls + '）' : '');
+          if (typeof setProgress === 'function') setProgress(progressText);
+          setTimeout(function () { pollReciteIdentifyFaceTask(taskId, apiKey, setProgress, resolve, reject, pollCount + 1); }, 2500);
+        })
+        .catch(reject);
+    }
+    
+    // ✅ 收集视频URL（参考AI创作工坊）
+    function collectReciteVideoUrls(obj, out) {
+      if (!obj || typeof obj !== 'object') return;
+      const urlKeys = ['video', 'url', 'videos', 'video_url', 'output_video', 'result_url', 'output_url', 'videoUrl'];
+      urlKeys.forEach(function (k) {
+        const v = obj[k];
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) out.push(v);
+        else if (Array.isArray(v)) v.forEach(function (u) {
+          if (typeof u === 'string' && /^https?:\/\//i.test(u)) out.push(u);
+          else if (u && u.url) out.push(u.url);
+        });
+      });
+      Object.keys(obj).forEach(function (k) {
+        collectReciteVideoUrls(obj[k], out);
+      });
+    }
+    
+    // ✅ 轮询对口型任务状态（完全按照AI创作工坊的逻辑）
+    function pollReciteLipSyncTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount) {
+      pollCount = pollCount || 0;
+      const maxPolls = 240; // 最多轮询240次（约10分钟）
+      
+      if (pollCount >= maxPolls) {
+        reject(new Error('轮询超时（已轮询 ' + maxPolls + ' 次，约 ' + Math.round(maxPolls * 2.5 / 60) + ' 分钟），请稍后在「作品管理」中重新查询'));
+        return;
+      }
+      
+      const url = buildApiUrl('/api/yunwu/videos/advanced-lip-sync/' + encodeURIComponent(taskId));
+      
+      fetch(url, {
+        method: 'GET',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          // 检查API错误（改进错误处理，检查更多错误字段）
+          if (data && data.success === false) {
+            const errorMsg = data.message || 
+                            data.error || 
+                            (data.error && data.error.message) ||
+                            data.data?.message ||
+                            data.data?.error ||
+                            (data.data && data.data.error && data.data.error.message) ||
+                            '未知错误';
+            reject(new Error(errorMsg));
+            return;
+          }
+          
+          // 解析状态（完全按照AI创作工坊的逻辑）
+          const statusRaw = (data && data.data && data.data.task_status) ||
+            (data && data.task_status) ||
+            (data && data.data && data.data.status) ||
+            (data && data.status) ||
+            (data && data.data && data.data.task_result && data.data.task_result.task_status) ||
+            '';
+          
+          const status = normalizeReciteTaskStatus(statusRaw);
+          
+          // 解析任务结果（完全按照AI创作工坊的逻辑）
+          const result = (data && data.data && data.data.task_result) ||
+            (data && data.data && data.data.result) ||
+            (data && data.result) ||
+            (data && data.data) ||
+            {};
+          
+          // 检查任务结果中的错误信息（在解析状态之前）
+          if (status === 'failed' || statusRaw.toLowerCase().includes('fail') || statusRaw.toLowerCase().includes('error')) {
+            const errorMsg = (result && (result.message || result.error || (result.error && result.error.message))) ||
+                            (data && (data.message || data.error || (data.error && data.error.message))) ||
+                            (data && data.data && (data.data.message || data.data.error || (data.data.error && data.data.error.message))) ||
+                            statusRaw ||
+                            '任务失败';
+            reject(new Error(errorMsg));
+            return;
+          }
+          
+          // 收集视频URL（完全按照AI创作工坊的逻辑）
+          let videos = [];
+          if (result.video || result.videoUrl || result.video_url) {
+            const v = result.video || result.videoUrl || result.video_url;
+            if (typeof v === 'string') videos.push(v);
+            else if (v && v.url) videos.push(v.url);
+          }
+          if (!videos.length && result.url) {
+            const url = typeof result.url === 'string' ? result.url : (result.url && result.url.url);
+            if (url && /\.(mp4|webm|mov|avi)$/i.test(url)) videos.push(url);
+          }
+          if (!videos.length) collectReciteVideoUrls(data, videos);
+          videos = [...new Set(videos.filter(Boolean))];
+          
+          // 获取视频ID（完全按照AI创作工坊的逻辑）
+          const videoId = (result && result.video_id) ||
+            (data && data.data && data.data.video_id) ||
+            (data && data.data && data.data.task_result && data.data.task_result.video_id) ||
+            (data && data.video_id) ||
+            '';
+          
+          // 任务完成且有视频（完全按照AI创作工坊的逻辑）
+          if (status === 'done' && videos.length > 0) {
+            resolve({ videos: videos, raw: data, videoId: videoId });
+            return;
+          }
+          
+          // 任务完成但无视频URL（继续轮询等待，完全按照AI创作工坊的逻辑）
+          if (status === 'done' && !videos.length) {
+            const progressText = '任务状态已完成，但视频链接尚未生成，继续轮询中…（' + (pollCount + 1) + '/' + maxPolls + '）';
+            if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
+            // 更新作品状态（如果workId存在）
+            if (workId) {
+              const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+              const work = works.find(function (w) { return w.id === workId; });
+              if (work) {
+                const n = ((work.progress) || 0) + 1;
+                work.progress = n;
+                work.status = 'processing';
+                work.updateDate = new Date().toISOString();
+                localStorage.setItem('cn_dh_works', JSON.stringify(works));
+                // 刷新作品列表
+                if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+                  loadWorks();
+                }
+              }
+            }
+            setTimeout(function () { pollReciteLipSyncTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
+            return;
+          }
+          
+          // 任务失败（完全按照AI创作工坊的逻辑，改进错误信息提取）
+          if (status === 'failed') {
+            const errorMsg = (result && (result.message || result.error || (result.error && result.error.message))) ||
+                            (data && (data.message || data.error || (data.error && data.error.message))) ||
+                            (data && data.data && (data.data.message || data.data.error || (data.data.error && data.data.error.message))) ||
+                            (data && data.data && data.data.task_result && (data.data.task_result.message || data.data.task_result.error)) ||
+                            statusRaw ||
+                            '任务失败';
+            reject(new Error(errorMsg));
+            return;
+          }
+          
+          // 任务处理中，继续轮询（完全按照AI创作工坊的逻辑）
+          let progressText = '轮询中，状态=' + (statusRaw || '处理中');
+          if (videos.length > 0) {
+            progressText += '（已检测到 ' + videos.length + ' 个视频链接，等待最终确认）';
+          }
+          progressText += '（' + (pollCount + 1) + '/' + maxPolls + '）';
+          if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
+          
+          // 更新作品状态（如果workId存在）
+          if (workId) {
+            const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+            const work = works.find(function (w) { return w.id === workId; });
+            if (work) {
+              const n = ((work.progress) || 0) + 1;
+              work.progress = n;
+              work.status = 'processing';
+              work.updateDate = new Date().toISOString();
+              localStorage.setItem('cn_dh_works', JSON.stringify(works));
+              // 刷新作品列表
+              if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+                loadWorks();
+              }
+            }
+          }
+          
+          setTimeout(function () { pollReciteLipSyncTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
+        })
+        .catch(reject);
+    }
+    
+    // 步骤3：生成视频（对口型）
+    async function reciteGenerateVideo() {
+      // 检查音频（优先使用reciteSelectedAudio，其次使用reciteGeneratedAudioId）
+      const audioId = reciteSelectedAudio.id || reciteGeneratedAudioId;
+      const audioUrl = reciteSelectedAudio.url;
+      const audioBase64 = reciteSelectedAudio.base64;
+      
+      if (!audioUrl && !audioId && !audioBase64) {
+        alert('请先完成步骤1：选择音频或输入音频ID');
+        return;
+      }
+      
+      // 检查视频
+      if (!reciteSelectedVideo.id && !reciteSelectedVideo.url) {
+        alert('请先完成步骤2：选择视频');
+        return;
+      }
+      
+      const apiKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
+      if (!apiKey) {
+        alert('请先配置云雾 API Key');
+        return;
+      }
+      
+      showLoading(true, '正在识别人脸...');
+      
+      try {
+        // 先识别人脸（参考AI创作工坊）
+        const identifyResponse = await fetch(buildApiUrl('/api/yunwu/videos/identify-face'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: apiKey,
+            video_url: reciteSelectedVideo.url || undefined,
+            video_id: reciteSelectedVideo.id || undefined
+          })
+        });
+        
+        // 解析响应（参考AI创作工坊）
+        let identifyResult;
+        try {
+          const responseText = await identifyResponse.text();
+          identifyResult = responseText ? JSON.parse(responseText) : null;
+        } catch (e) {
+          identifyResult = null;
+        }
+        
+        // 检查HTTP错误
+        if (!identifyResponse.ok) {
+          const msg = (identifyResult && (identifyResult.message || identifyResult.error || (identifyResult.error && identifyResult.error.message))) || 
+                      ('HTTP ' + identifyResponse.status);
+          showLoading(false);
+          alert('❌ 人脸识别失败：' + msg);
+          return;
+        }
+        
+        if (!identifyResult) {
+          showLoading(false);
+          alert('❌ 人脸识别失败：响应解析失败');
+          return;
+        }
+        
+        // 检查API错误
+        if (identifyResult.success === false) {
+          const msg = identifyResult.message || '未知错误';
+          if (/not found by id|video not found|视频.*未找到/i.test(String(msg))) {
+            showLoading(false);
+            alert('❌ 人脸识别未找到该视频。请使用「视频资源 ID」或视频 URL，不要使用任务 ID（task_id）。若该 ID 来自可灵任务，请到作品管理中找到对应任务，使用完成后返回的「视频链接」再试。');
+            return;
+          }
+          showLoading(false);
+          alert('❌ 人脸识别失败：' + msg);
+          return;
+        }
+        
+        // 解析响应数据（参考AI创作工坊）
+        const inner = (identifyResult && identifyResult.data && identifyResult.data.data) || 
+                      (identifyResult && identifyResult.data) || 
+                      identifyResult;
+        
+        // 检查是否返回了任务ID（需要轮询）
+        const identifyTaskId = (identifyResult && identifyResult.data && (identifyResult.data.id || identifyResult.data.task_id || identifyResult.data.request_id)) ||
+          (identifyResult && identifyResult.id) || 
+          (identifyResult && identifyResult.task_id) || 
+          (identifyResult && identifyResult.request_id) ||
+          (identifyResult && identifyResult.data && identifyResult.data.request_id);
+        
+        // 检查是否直接返回了session_id
+        let sessionId = (inner && inner.session_id) ||
+          (identifyResult && identifyResult.data && identifyResult.data.session_id) ||
+          (identifyResult && identifyResult.session_id) ||
+          '';
+        
+        let faceData = (inner && inner.face_data) || 
+          (inner && inner.faces) ||
+          (identifyResult && identifyResult.data && identifyResult.data.face_data) || 
+          (identifyResult && identifyResult.data && identifyResult.data.faces) ||
+          (identifyResult && identifyResult.face_data) || 
+          (identifyResult && identifyResult.faces) ||
+          [];
+        
+        let faceId = '-1';
+        
+        // 如果需要轮询（有任务ID但没有session_id）
+        if (identifyTaskId && !sessionId) {
+          showLoading(true, '任务已创建，轮询中: ' + identifyTaskId + ' …');
+          
+          const setProgress = function (txt) {
+            showLoading(true, txt);
+          };
+          
+          try {
+            const pollResult = await new Promise(function (resolve, reject) {
+              pollReciteIdentifyFaceTask(identifyTaskId, apiKey, setProgress, resolve, reject, 0);
+            });
+            
+            sessionId = pollResult.sessionId || '';
+            faceData = pollResult.faces || [];
+            faceId = pollResult.faceId || '-1';
+          } catch (pollError) {
+            showLoading(false);
+            alert('❌ 人脸识别轮询失败：' + (pollError.message || pollError.toString()));
+            return;
+          }
+        } else if (!sessionId) {
+          // 既没有任务ID也没有session_id
+          const msg = (identifyResult && (identifyResult.message || identifyResult.error || (identifyResult.error && identifyResult.error.message))) || 
+                     '未返回会话ID';
+          if (/not found by id|video not found|视频.*未找到/i.test(String(msg))) {
+            showLoading(false);
+            alert('❌ 人脸识别未找到该视频。请使用「视频资源 ID」或视频 URL，不要使用任务 ID（task_id）。若该 ID 来自可灵任务，请到作品管理中找到对应任务，使用完成后返回的「视频链接」再试。');
+            return;
+          }
+          showLoading(false);
+          alert('❌ 人脸识别失败：' + msg);
+          return;
+        }
+        
+        // 解析face_id
+        const faces = Array.isArray(faceData) ? faceData : (faceData && typeof faceData === 'object' ? [faceData] : []);
+        if (faces.length > 0 && faceId === '-1') {
+          faceId = faces[0].face_id != null ? String(faces[0].face_id) : '-1';
+        }
+        
+        showLoading(true, '正在生成对口型视频...');
+        
+        // 构建对口型请求（按照API文档规范）
+        // 优先使用音频ID（合成音频或手动输入），其次使用URL，最后使用Base64（仅本地测试）
+        const finalAudioId = reciteSelectedAudio.id || reciteGeneratedAudioId;
+        const finalAudioUrl = reciteSelectedAudio.url;
+        const finalAudioBase64 = reciteSelectedAudio.base64;
+        
+        // 获取用户配置的对口型参数（按照API文档要求，所有参数必须是整数）
+        const soundStartTime = parseInt(document.getElementById('reciteSoundStartTime')?.value || '0', 10);
+        const soundEndTime = parseInt(document.getElementById('reciteSoundEndTime')?.value || '5000', 10);
+        const soundInsertTime = parseInt(document.getElementById('reciteSoundInsertTime')?.value || '1000', 10);
+        const soundVolume = parseFloat(document.getElementById('reciteSoundVolume')?.value || '1') || 1;
+        const originalAudioVolume = parseFloat(document.getElementById('reciteOriginalAudioVolume')?.value || '1') || 1;
+        
+        // 验证参数范围（按照API文档）
+        if (soundStartTime < 0) {
+          showLoading(false);
+          alert('❌ 音频裁剪起点时间不能小于0');
+          return;
+        }
+        if (soundEndTime < soundStartTime + 2000) {
+          showLoading(false);
+          alert('❌ 音频裁剪终点时间必须至少比起点时间大2000ms（2秒）');
+          return;
+        }
+        if (soundVolume < 0 || soundVolume > 2) {
+          showLoading(false);
+          alert('❌ 音频音量大小必须在 [0, 2] 范围内');
+          return;
+        }
+        if (originalAudioVolume < 0 || originalAudioVolume > 2) {
+          showLoading(false);
+          alert('❌ 原始视频音量大小必须在 [0, 2] 范围内');
+          return;
+        }
+        
+        const lipsyncBody = {
+          apiKey: apiKey,
+          session_id: sessionId,
+          face_choose: [{
+            face_id: faceId,
+            sound_start_time: soundStartTime,
+            sound_end_time: soundEndTime,
+            sound_insert_time: soundInsertTime,
+            sound_volume: soundVolume,
+            original_audio_volume: originalAudioVolume
+          }]
+        };
+        
+        // 添加音频参数（audio_id和sound_file二选一，不能同时为空，也不能同时有值）
+        if (finalAudioId) {
+          lipsyncBody.face_choose[0].audio_id = finalAudioId;
+          // 确保sound_file不存在
+          delete lipsyncBody.face_choose[0].sound_file;
+        } else if (finalAudioUrl) {
+          lipsyncBody.face_choose[0].sound_file = finalAudioUrl;
+          // 确保audio_id不存在
+          delete lipsyncBody.face_choose[0].audio_id;
+        } else if (finalAudioBase64) {
+          // 云雾 API 要求纯 base64，不要 data:audio/xxx;base64, 前缀
+          var pureBase64 = finalAudioBase64;
+          if (typeof pureBase64 === 'string' && pureBase64.indexOf(',') >= 0 && /^data:/.test(pureBase64)) {
+            pureBase64 = pureBase64.replace(/^data:[^;]+;base64,/, '');
+          }
+          lipsyncBody.face_choose[0].sound_file = pureBase64;
+          // 确保audio_id不存在
+          delete lipsyncBody.face_choose[0].audio_id;
+        } else {
+          showLoading(false);
+          alert('❌ 未找到有效的音频数据（需要audio_id或sound_file）');
+          return;
+        }
+        
+        // 提交对口型任务（参考AI创作工坊）
+        const lipsyncResponse = await fetch(buildApiUrl('/api/yunwu/videos/advanced-lip-sync'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lipsyncBody)
+        });
+        
+        // 解析响应（参考AI创作工坊）
+        let lipsyncResult;
+        try {
+          const responseText = await lipsyncResponse.text();
+          lipsyncResult = responseText ? JSON.parse(responseText) : null;
+        } catch (e) {
+          lipsyncResult = null;
+        }
+        
+        // 检查HTTP错误
+        if (!lipsyncResponse.ok) {
+          const msg = (lipsyncResult && (lipsyncResult.message || lipsyncResult.error || (lipsyncResult.error && lipsyncResult.error.message))) || 
+                      ('HTTP ' + lipsyncResponse.status);
+          showLoading(false);
+          alert('❌ 对口型任务创建失败：' + msg);
+          return;
+        }
+        
+        if (!lipsyncResult) {
+          showLoading(false);
+          alert('❌ 对口型任务创建失败：响应解析失败');
+          return;
+        }
+        
+        // 检查API错误
+        if (lipsyncResult.success === false) {
+          showLoading(false);
+          alert('❌ 对口型任务创建失败：' + (lipsyncResult.message || '未知错误'));
+          return;
+        }
+        
+        // 获取任务ID（参考AI创作工坊）
+        const taskId = (lipsyncResult && lipsyncResult.data && (lipsyncResult.data.id || lipsyncResult.data.task_id || lipsyncResult.data.request_id)) ||
+          (lipsyncResult && lipsyncResult.id) || 
+          (lipsyncResult && lipsyncResult.task_id) || 
+          (lipsyncResult && lipsyncResult.request_id) ||
+          (lipsyncResult && lipsyncResult.data && lipsyncResult.data.request_id);
+        
+        if (!taskId) {
+          const errMsg = (lipsyncResult && (lipsyncResult.message || lipsyncResult.error || (lipsyncResult.error && lipsyncResult.error.message))) || 
+                         '未返回任务 ID，请检查 API 响应';
+          showLoading(false);
+          alert('❌ 对口型任务创建失败：' + errMsg);
+          return;
+        }
+        
+        // 保存作品记录
+        const workId = Date.now().toString();
+        const script = document.getElementById('reciteScriptYunwu')?.value.trim() || '';
+        const work = {
+          id: workId,
+          type: 'recite',
+          title: script.substring(0, 50) + (script.length > 50 ? '...' : ''),
+          script: script,
+          platform: 'yunwu',
+          taskId: taskId,
+          status: 'processing',
+          progress: 0,
+          videoUrl: null,
+          audioId: finalAudioId || null,
+          audioUrl: finalAudioUrl || null,
+          videoId: reciteSelectedVideo.id,
+          videoUrl: reciteSelectedVideo.url,
+          sessionId: sessionId,
+          faceId: faceId,
+          createDate: new Date().toISOString(),
+          updateDate: new Date().toISOString()
+        };
+        
+        const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+        works.unshift(work);
+        if (works.length > 100) works.length = 100;
+        localStorage.setItem('cn_dh_works', JSON.stringify(works));
+        
+        // ✅ 立即关闭加载状态，开始后台轮询
+        showLoading(false);
+        
+        // 刷新作品列表
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
+        }
+        
+        alert(`✅ 诵读视频任务已提交！\n\n任务ID: ${taskId}\n\n系统将在后台自动轮询任务状态，请到「作品管理」查看进度与结果。`);
+        
+        // 开始后台轮询（完全按照AI创作工坊的逻辑）
+        const setProgress = function (txt, statusRaw) {
+          // 后台轮询，不显示加载状态，只更新作品状态
+          const updatedWorks = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          const workIndex = updatedWorks.findIndex(w => w.id === workId);
+          if (workIndex >= 0) {
+            updatedWorks[workIndex].progressStatus = txt || '处理中';
+            updatedWorks[workIndex].updateDate = new Date().toISOString();
+            localStorage.setItem('cn_dh_works', JSON.stringify(updatedWorks));
+            // 如果作品管理面板打开，刷新显示
+            if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+              loadWorks();
+            }
+          }
+        };
+        
+        try {
+          const pollResult = await new Promise(function (resolve, reject) {
+            pollReciteLipSyncTask(taskId, apiKey, workId, setProgress, resolve, reject, 0);
+          });
+          
+          // 更新作品记录（完全按照AI创作工坊的逻辑）
+          const videos = pollResult.videos || [];
+          work.videoUrl = videos.length > 0 ? videos[0] : null;
+          work.videoId = pollResult.videoId || null;
+          work.status = 'completed';
+          work.updateDate = new Date().toISOString();
+          
+          const updatedWorks = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          const workIndex = updatedWorks.findIndex(w => w.id === workId);
+          if (workIndex >= 0) {
+            updatedWorks[workIndex] = work;
+            localStorage.setItem('cn_dh_works', JSON.stringify(updatedWorks));
+          }
+          
+          showLoading(false);
+          alert(`✅ 诵读视频生成成功！\n\n视频URL: ${work.videoUrl || '无'}\n\n请到「作品管理」查看结果。`);
+          
+          // 刷新作品列表
+          if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+            loadWorks();
+          }
+        } catch (pollError) {
+          // 更新作品记录为失败（完全按照AI创作工坊的逻辑）
+          work.status = 'failed';
+          work.updateDate = new Date().toISOString();
+          const updatedWorks = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          const workIndex = updatedWorks.findIndex(w => w.id === workId);
+          if (workIndex >= 0) {
+            updatedWorks[workIndex] = work;
+            localStorage.setItem('cn_dh_works', JSON.stringify(updatedWorks));
+          }
+          
+          showLoading(false);
+          alert('❌ 对口型轮询失败：' + (pollError.message || pollError.toString()) + '\n\n任务ID: ' + taskId + '\n\n请稍后在「作品管理」中重新查询。');
+          
+          // 刷新作品列表
+          if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+            loadWorks();
+          }
+        }
+      } catch (error) {
+        showLoading(false);
+        alert('❌ 生成失败：' + error.message);
+      }
+    }
+    
+    // ✅ 保留HeyGen的createReciteVideo函数
+    async function createReciteVideo() {
+      const provider = selectedRecitePlatform || 'heygen';
+      
       if (!selectedReciteDigitalHumanId && !selectedAvatarForRecite) {
         alert('请先选择一个数字人形象');
         return;
       }
 
-      const provider = selectedRecitePlatform || 'heygen';
-      let apiKey, requestBody;
-
-      // ========== 云雾API处理 ==========
-      if (provider === 'yunwu') {
-        if (!reciteAudioBase64Yunwu) {
-          alert('使用云雾数字人时，请上传诵读音频或点击「使用该数字人原视频中的声音」（.mp3/.wav/.m4a/.aac，≤5MB）');
+      // 根据平台获取文案内容
+      let script = '';
+      if (provider === 'heygen') {
+        script = document.getElementById('reciteScript')?.value.trim() || '';
+        if (!script) {
+          alert('请输入文案内容');
           return;
         }
+        if (script.length > 1000) {
+          alert('文案内容过长，请控制在1000字以内');
+          return;
+        }
+      } else {
+        // 云雾平台：文案为必填
+        script = document.getElementById('reciteScriptYunwu')?.value.trim() || '';
+        if (!script) {
+          alert('请输入文案内容');
+          return;
+        }
+        if (script.length > 1000) {
+          alert('文案内容过长，请控制在1000字以内');
+          return;
+        }
+      }
+      let apiKey, requestBody;
+
+      // ========== 云雾API处理（重构为三步流程） ==========
+      if (provider === 'yunwu') {
         apiKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
         if (!apiKey) {
           alert('请先配置云雾 API Key');
           return;
         }
         
+        // 获取音色选择
+        const voiceSelect = document.getElementById('reciteYunwuVoiceSelect');
+        const voiceId = voiceSelect?.value || 'genshin_vindi2';
+        const voiceLanguage = 'zh'; // 默认中文
+        
         const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
         const dh = digitalHumans.find(d => d.id === selectedReciteDigitalHumanId);
-        if (!dh || !dh.thumbnail) {
-          alert('未找到该数字人的形象图');
+        if (!dh) {
+          alert('未找到该数字人');
+          return;
+        }
+        
+        // 检查数字人是否有视频URL（用于人脸识别）
+        if (!dh.videoUrl) {
+          alert('该数字人没有视频URL，无法进行对口型处理。请确保数字人已创建完成并拥有视频。');
           return;
         }
 
-        showLoading(true, '正在通过云雾生成诵读视频...');
+        showLoading(true, '🔄 步骤1/3：正在生成语音...');
+        
         try {
-          // 处理图片：压缩并上传为URL（如果过大）
-          let imgToSend = dh.thumbnail;
-          const thumbLen = String(imgToSend || '').length;
-          if (thumbLen > 400000 && typeof compressImageForStorage === 'function') {
-            imgToSend = await compressImageForStorage(imgToSend, 640, 0.8);
+          // ========== 步骤1：语音合成 ==========
+          console.log('=== 步骤1：语音合成 ===');
+          const ttsResponse = await fetch(buildApiUrl('/api/yunwu/audio/tts'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: apiKey,
+              text: script,
+              voice_id: voiceId,
+              voice_language: voiceLanguage,
+              voice_speed: 1.0
+            })
+          });
+          
+          const ttsResult = await ttsResponse.json();
+          if (!ttsResult.success || !ttsResult.data) {
+            let msg = ttsResult.message || '未知错误';
+            const lower = (msg || '').toString().toLowerCase();
+            if (lower.indexOf('invalid token') !== -1) {
+              msg = '登录状态已失效或云雾 API Key 无效。\n\n请重新登录系统，或联系管理员在「API Key 配置」中为您分配有效的云雾 Key。';
+            }
+            showLoading(false);
+            alert('❌ 语音合成失败：' + msg);
+            return;
           }
           
-          // 处理音频
-          let audioToSend = reciteAudioBase64Yunwu;
-          const urlThreshold = 200000;
+          // ✅ 获取音频URL或ID（TTS API可能返回任务ID，需要轮询获取音频）
+          // 检查是否直接返回音频URL/ID，还是返回任务ID需要轮询
+          const directAudioUrl = ttsResult.data?.url || ttsResult.data?.audio_url || ttsResult.data?.audioUrl || null;
+          const directAudioId = ttsResult.data?.audio_id || ttsResult.data?.id || null;
+          const ttsTaskId = ttsResult.data?.task_id || ttsResult.data?.id || ttsResult.taskId || null;
           
-          // 如果文件过大，上传为临时URL
-          if (String(imgToSend).length > urlThreshold) {
-            showLoading(true, '正在上传图片以减小请求体积...');
-            imgToSend = await ensureYunwuAssetUrl(imgToSend, 'image');
-            showLoading(true, '正在通过云雾生成诵读视频...');
+          let audioUrl = directAudioUrl;
+          let audioId = directAudioId;
+          
+          // 如果返回的是任务ID，需要轮询获取音频URL/ID
+          if (!audioUrl && !audioId && ttsTaskId) {
+            console.log('⚠️ TTS返回任务ID，需要轮询获取音频...');
+            showLoading(true, '🔄 步骤1/3：正在等待语音生成...');
+            
+            try {
+              // 轮询TTS任务状态
+              const maxTtsPolls = 60; // 最多轮询60次（约2.5分钟）
+              let ttsPollCount = 0;
+              
+              while (ttsPollCount < maxTtsPolls) {
+                await new Promise(resolve => setTimeout(resolve, 2500)); // 等待2.5秒
+                ttsPollCount++;
+                
+                const ttsStatusResponse = await fetch(buildApiUrl(`/api/yunwu/audio/tts/${ttsTaskId}`), {
+                  method: 'GET',
+                  headers: {
+                    'X-API-Key': apiKey,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                const ttsStatusResult = await ttsStatusResponse.json();
+                const status = ttsStatusResult.data?.task_status || ttsStatusResult.data?.status || '';
+                
+                if (['succeed', 'succeeded', 'success', 'completed', 'done'].includes(status.toLowerCase())) {
+                  // 任务完成，提取音频URL/ID
+                  const result = ttsStatusResult.data?.task_result || ttsStatusResult.data?.result || ttsStatusResult.data || {};
+                  audioUrl = result.url || result.audio_url || result.audioUrl || 
+                            (result.audios && result.audios[0] && result.audios[0].url) ||
+                            null;
+                  audioId = result.audio_id || result.id ||
+                           (result.audios && result.audios[0] && result.audios[0].id) ||
+                           null;
+                  
+                  if (audioUrl || audioId) {
+                    console.log('✅ TTS任务完成，音频URL:', audioUrl, '音频ID:', audioId);
+                    break;
+                  }
+                } else if (['failed', 'error', 'failure'].includes(status.toLowerCase())) {
+                  showLoading(false);
+                  alert('❌ 语音合成任务失败：' + (ttsStatusResult.message || '未知错误'));
+                  return;
+                }
+                
+                // 继续轮询
+                showLoading(true, `🔄 步骤1/3：正在等待语音生成... (${ttsPollCount}/${maxTtsPolls})`);
+              }
+              
+              if (!audioUrl && !audioId) {
+                showLoading(false);
+                alert('❌ 语音合成超时，请稍后重试');
+                return;
+              }
+            } catch (ttsPollError) {
+              showLoading(false);
+              alert('❌ 查询语音合成状态失败：' + ttsPollError.message);
+              return;
+            }
           }
-          if (String(audioToSend).length > urlThreshold) {
-            showLoading(true, '正在上传音频以减小请求体积...');
-            audioToSend = await ensureYunwuAssetUrl(audioToSend, 'audio');
-            showLoading(true, '正在通过云雾生成诵读视频...');
+          
+          if (!audioUrl && !audioId) {
+            showLoading(false);
+            alert('❌ 语音合成未返回音频URL或ID');
+            return;
+          }
+          
+          console.log('✅ 语音合成成功，音频URL:', audioUrl, '音频ID:', audioId);
+          
+          // ========== 步骤2：人脸识别 ==========
+          showLoading(true, '🔄 步骤2/3：正在识别人脸...');
+          console.log('=== 步骤2：人脸识别 ===');
+          
+          const identifyResponse = await fetch(buildApiUrl('/api/yunwu/videos/identify-face'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: apiKey,
+              video_url: dh.videoUrl
+            })
+          });
+          
+          const identifyResult = await identifyResponse.json();
+          if (!identifyResult.success || !identifyResult.data) {
+            showLoading(false);
+            alert('❌ 人脸识别失败：' + (identifyResult.message || '未知错误'));
+            return;
+          }
+          
+          const sessionId = identifyResult.data.session_id || identifyResult.data.data?.session_id || null;
+          const faceData = identifyResult.data.face_data || identifyResult.data.data?.face_data || identifyResult.data.faces || [];
+          const faceId = faceData.length > 0 ? (faceData[0].face_id || '-1') : '-1';
+          
+          if (!sessionId) {
+            showLoading(false);
+            alert('❌ 人脸识别未返回会话ID');
+            return;
+          }
+          
+          console.log('✅ 人脸识别成功，会话ID:', sessionId, '人脸ID:', faceId);
+          
+          // ========== 步骤3：对口型 ==========
+          showLoading(true, '🔄 步骤3/3：正在生成对口型视频...');
+          console.log('=== 步骤3：对口型 ===');
+          
+          // 获取用户配置的对口型参数（按照API文档要求，所有参数必须是整数）
+          const soundStartTime = parseInt(document.getElementById('reciteSoundStartTime')?.value || '0', 10);
+          const soundEndTime = parseInt(document.getElementById('reciteSoundEndTime')?.value || '5000', 10);
+          const soundInsertTime = parseInt(document.getElementById('reciteSoundInsertTime')?.value || '1000', 10);
+          const soundVolume = parseFloat(document.getElementById('reciteSoundVolume')?.value || '1') || 1;
+          const originalAudioVolume = parseFloat(document.getElementById('reciteOriginalAudioVolume')?.value || '1') || 1;
+          
+          // 验证参数范围（按照API文档）
+          if (soundStartTime < 0) {
+            showLoading(false);
+            alert('❌ 音频裁剪起点时间不能小于0');
+            return;
+          }
+          if (soundEndTime < soundStartTime + 2000) {
+            showLoading(false);
+            alert('❌ 音频裁剪终点时间必须至少比起点时间大2000ms（2秒）');
+            return;
+          }
+          if (soundVolume < 0 || soundVolume > 2) {
+            showLoading(false);
+            alert('❌ 音频音量大小必须在 [0, 2] 范围内');
+            return;
+          }
+          if (originalAudioVolume < 0 || originalAudioVolume > 2) {
+            showLoading(false);
+            alert('❌ 原始视频音量大小必须在 [0, 2] 范围内');
+            return;
+          }
+          
+          const lipsyncBody = {
+            apiKey: apiKey,
+            session_id: sessionId,
+            face_choose: [{
+              face_id: faceId,
+              sound_start_time: soundStartTime,
+              sound_end_time: soundEndTime,
+              sound_insert_time: soundInsertTime,
+              sound_volume: soundVolume,
+              original_audio_volume: originalAudioVolume
+            }]
+          };
+          
+          // 使用音频ID或URL（audio_id和sound_file二选一）
+          if (audioId) {
+            lipsyncBody.face_choose[0].audio_id = audioId;
+            // 确保sound_file不存在
+            delete lipsyncBody.face_choose[0].sound_file;
+          } else if (audioUrl) {
+            lipsyncBody.face_choose[0].sound_file = audioUrl;
+            // 确保audio_id不存在
+            delete lipsyncBody.face_choose[0].audio_id;
+          } else {
+            showLoading(false);
+            alert('❌ 无法获取音频ID或URL（需要audio_id或sound_file）');
+            return;
+          }
+          
+          const lipsyncResponse = await fetch(buildApiUrl('/api/yunwu/videos/advanced-lip-sync'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lipsyncBody)
+          });
+          
+          const lipsyncResult = await lipsyncResponse.json();
+          if (!lipsyncResult.success) {
+            showLoading(false);
+            alert('❌ 对口型任务创建失败：' + (lipsyncResult.message || '未知错误'));
+            return;
+          }
+          
+          // 提取任务ID
+          const taskId = lipsyncResult.data?.id || 
+                         lipsyncResult.data?.task_id || 
+                         lipsyncResult.data?.request_id ||
+                         lipsyncResult.id ||
+                         lipsyncResult.task_id ||
+                         null;
+          
+          if (!taskId) {
+            showLoading(false);
+            alert('❌ 对口型任务创建成功但未返回任务ID');
+            return;
+          }
+          
+          console.log('✅ 对口型任务已创建，任务ID:', taskId);
+          
+          // 保存作品记录
+          const workId = Date.now().toString();
+          const work = {
+            id: workId,
+            type: 'recite',
+            title: script.substring(0, 50) + (script.length > 50 ? '...' : ''),
+            script: script,
+            platform: 'yunwu',
+            taskId: taskId,
+            status: 'processing',
+            progress: 0,
+            videoUrl: null,
+            voiceId: voiceId,
+            voiceLanguage: voiceLanguage,
+            audioUrl: audioUrl,
+            audioId: audioId,
+            sessionId: sessionId,
+            faceId: faceId,
+            createDate: new Date().toISOString(),
+            updateDate: new Date().toISOString()
+          };
+
+          const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          works.unshift(work);
+          if (works.length > 100) works.length = 100;
+          localStorage.setItem('cn_dh_works', JSON.stringify(works));
+
+          showLoading(false);
+          alert(`✅ 诵读视频任务已提交！\n\n任务ID: ${taskId}\n\n系统已完成：\n1️⃣ 语音合成 ✓\n2️⃣ 人脸识别 ✓\n3️⃣ 对口型任务已创建 ✓\n\n请到「作品管理」查看进度与结果。`);
+
+          // 清空表单
+          const scriptEl = document.getElementById('reciteScriptYunwu');
+          if (scriptEl) {
+            scriptEl.value = '';
+            updateReciteCharCountYunwu();
           }
 
-          requestBody = {
-            provider: 'yunwu',
-            type: 'recite',
-            apiKey: apiKey,
-            imageUrl: imgToSend,
-            audioFile: audioToSend,
-            text: script,
-            prompt: script,
-            mode: 'std'
-          };
+          // 开始轮询任务状态
+          startReciteTaskPolling(workId, taskId, apiKey, 'yunwu');
+          
+          // 如果作品管理面板已打开，刷新列表
+          if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+            loadWorks();
+          }
+          
+          return; // 云雾平台流程已完成，直接返回
         } catch (err) {
+          console.error('创建诵读视频错误:', err);
           showLoading(false);
-          alert('❌ 准备数据失败：' + err.message);
+          alert('❌ 创建失败：' + err.message);
           return;
         }
       }
@@ -5485,15 +6981,19 @@ async function retryTask(digitalHumanId) {
         alert(`✅ ${provider === 'yunwu' ? '云雾' : 'HeyGen'}诵读视频已提交！\n\n任务正在后台处理中，请到「作品管理」查看进度与结果。`);
 
         // 清空表单
-        document.getElementById('reciteScript').value = '';
-        updateReciteCharCount();
-        
-        if (provider === 'yunwu') {
-          reciteAudioBase64Yunwu = null;
-          const inp = document.getElementById('reciteYunwuAudioInput');
-          if (inp) inp.value = '';
-          const rs = document.getElementById('reciteVideoSoundStatus');
-          if (rs) rs.style.display = 'none';
+        if (provider === 'heygen') {
+          const scriptEl = document.getElementById('reciteScript');
+          if (scriptEl) {
+            scriptEl.value = '';
+            updateReciteCharCount();
+          }
+        } else {
+          const scriptEl = document.getElementById('reciteScriptYunwu');
+          if (scriptEl) {
+            scriptEl.value = '';
+            updateReciteCharCountYunwu();
+          }
+          // ✅ 不再需要清理音频相关状态（已改为自动生成）
         }
 
         // 开始轮询任务状态
@@ -5519,7 +7019,15 @@ async function retryTask(digitalHumanId) {
       }
       let pollCount = 0;
       const maxPolls = 300;
-      const taskUrl = () => buildApiUrl(`/api/digital-human/task/${platform}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+      
+      const taskUrl = () => {
+        if (platform === 'yunwu') {
+          return buildApiUrl(`/api/yunwu/videos/advanced-lip-sync/${taskId}`);
+        }
+        return buildApiUrl(`/api/digital-human/task/${platform}/${taskId}`);
+      };
+      const authHeaders = (window.getAuthHeaders && window.getAuthHeaders()) || {};
+      
       const pollInterval = setInterval(async () => {
         pollCount++;
         if (pollCount > maxPolls) {
@@ -5529,7 +7037,7 @@ async function retryTask(digitalHumanId) {
           return;
         }
         try {
-          const response = await fetch(taskUrl());
+          const response = await fetch(taskUrl(), { headers: authHeaders });
           const contentType = response.headers.get('content-type') || '';
           let result;
           
@@ -5539,11 +7047,35 @@ async function retryTask(digitalHumanId) {
             return;
           }
           
-          if (result.success) {
-            const status = result.status;
-            const progress = result.progress || 0;
-            const videoUrl = result.videoUrl || result.data?.video_url;
-            const error = result.error;
+          if (result.success || result.data) {
+            let status, progress, videoUrl, error;
+            
+            if (platform === 'yunwu') {
+              // 对口型任务响应格式
+              const data = result.data || result;
+              const statusRaw = data.task_status || data.status || data.data?.task_status || '';
+              status = ['succeed', 'succeeded', 'success', 'completed', 'done'].includes(statusRaw.toLowerCase()) 
+                ? 'completed' 
+                : ['failed', 'error', 'failure'].includes(statusRaw.toLowerCase())
+                ? 'failed'
+                : 'processing';
+              
+              progress = data.progress || (status === 'completed' ? 100 : 0);
+              
+              // 提取视频URL
+              const taskResult = data.task_result || data.result || data.data?.task_result || {};
+              videoUrl = taskResult.video || taskResult.video_url || taskResult.url || 
+                        data.video || data.video_url || data.url ||
+                        null;
+              
+              error = data.error || data.message || null;
+            } else {
+              // HeyGen任务响应格式
+              status = result.status;
+              progress = result.progress || 0;
+              videoUrl = result.videoUrl || result.data?.video_url;
+              error = result.error;
+            }
             
             updateReciteWorkStatus(workId, status, progress, videoUrl, error);
             
@@ -5555,7 +7087,7 @@ async function retryTask(digitalHumanId) {
         } catch (error) {
           console.error('轮询诵读任务状态错误:', error);
         }
-      }, 10000); // 每10秒查询一次
+      }, 2500); // 每2.5秒查询一次（对口型任务可能需要更频繁的查询）
       
       taskPollingIntervals.set(workId, pollInterval);
     }
@@ -5646,7 +7178,9 @@ async function retryTask(digitalHumanId) {
       if (!apiKey) return;
       
       try {
-        const response = await fetch(`/api/heygen/task/${work.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        const response = await fetch(buildApiUrl(`/api/heygen/task/${work.taskId}`), {
+          headers: (window.getAuthHeaders && window.getAuthHeaders()) || {}
+        });
         const result = await response.json();
         
         if (result.success) {
@@ -5658,9 +7192,23 @@ async function retryTask(digitalHumanId) {
       }
     }
     
-    // ========== 卖货推送功能 ==========
+    // ========== 卖货推送功能（多图参考生视频） ==========
     
-    // 更新卖货推送字数统计
+    // 人物图片列表（最少1张）
+    // promotePersonImages / promoteProductImages 已在 state.js 中定义
+    
+    // 更新提示词字数统计
+    function updatePromotePromptCount() {
+      const text = document.getElementById('promotePrompt')?.value || '';
+      const count = text.length;
+      const countEl = document.getElementById('promotePromptCount');
+      if (countEl) {
+        countEl.textContent = count;
+        countEl.style.color = count > 2500 ? 'var(--danger)' : 'var(--text-secondary)';
+      }
+    }
+    
+    // 更新商品描述字数统计（HeyGen）
     function updatePromoteCharCount() {
       const text = document.getElementById('promoteProductDesc')?.value || '';
       const count = text.length;
@@ -5671,60 +7219,593 @@ async function retryTask(digitalHumanId) {
       }
     }
     
-    // 处理商品图片上传（卖货推送）
-    let promoteProductImageBase64 = null;
+    // 添加人物图片（只能上传1张）
+    function addPromotePersonImage() {
+      if (promotePersonImages.length >= 1) {
+        alert('人物图片只能上传1张，请先删除现有图片');
+        return;
+      }
+      const input = document.getElementById('promotePersonImageInput');
+      if (input) input.click();
+    }
     
-    function handleProductImageUpload(input, context) {
-      if (context !== 'promote') return;
-      
-      const file = input.files[0];
+    // 添加物品图片
+    function addPromoteProductImage() {
+      if (promoteProductImages.length >= 3) {
+        alert('最多只能上传3张物品图片');
+        return;
+      }
+      const input = document.getElementById('promoteProductImageInput');
+      if (input) input.click();
+    }
+    
+    // 处理人物图片上传（只能上传1张）
+    async function handlePromotePersonImageUpload(event) {
+      const file = event.target.files?.[0];
       if (!file) return;
       
+      // 如果已经有图片，先删除
+      if (promotePersonImages.length >= 1) {
+        const existingImg = promotePersonImages[0];
+        if (existingImg.previewUrl) {
+          URL.revokeObjectURL(existingImg.previewUrl);
+        }
+        promotePersonImages = [];
+      }
+      
       if (!file.type.startsWith('image/')) {
-        alert('请选择图片文件');
+        alert(`文件 ${file.name} 不是图片格式`);
+        event.target.value = '';
         return;
       }
       
-      const reader = new FileReader();
-      reader.onload = () => {
-        promoteProductImageBase64 = reader.result;
-        const preview = document.getElementById('promoteImagePreview');
-        const previewImg = document.getElementById('promoteImagePreviewImg');
+      const isLocal = isLocalhost();
+      
+      try {
+        showLoading(true, `正在处理人物图片: ${file.name}...`);
         
-        if (preview && previewImg) {
-          previewImg.src = promoteProductImageBase64;
-          preview.style.display = 'block';
+        let imageUrl = null;
+        let imageBase64 = null;
+        
+        if (isLocal) {
+          // 本地测试：使用Base64（保留完整data URL格式）
+          const reader = new FileReader();
+          imageBase64 = await new Promise((resolve, reject) => {
+            reader.onload = () => {
+              // 保留完整的data URL格式，包含MIME类型信息
+              resolve(reader.result);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        } else {
+          // 生产环境：上传为URL
+          imageUrl = await uploadImageFile(file);
         }
-      };
-      reader.readAsDataURL(file);
+        
+        promotePersonImages.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          url: imageUrl,
+          base64: imageBase64,
+          mimeType: file.type, // 保存MIME类型
+          previewUrl: URL.createObjectURL(file)
+        });
+        
+        showLoading(false);
+      } catch (error) {
+        showLoading(false);
+        alert(`人物图片 ${file.name} 处理失败：` + error.message);
+      }
+      
+      event.target.value = '';
+      renderPromotePersonImages();
     }
     
-    function handleProductImageDrop(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        const input = document.getElementById('promoteImageInput');
-        if (input) {
-          input.files = files;
-          handleProductImageUpload(input, 'promote');
+    // 处理物品图片上传
+    async function handlePromoteProductImageUpload(event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+      
+      if (promoteProductImages.length + files.length > 3) {
+        alert('最多只能上传3张物品图片');
+        return;
+      }
+      
+      const isLocal = isLocalhost();
+      
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          alert(`文件 ${file.name} 不是图片格式`);
+          continue;
+        }
+        
+        try {
+          showLoading(true, `正在处理物品图片: ${file.name}...`);
+          
+          let imageUrl = null;
+          let imageBase64 = null;
+          
+          if (isLocal) {
+            // 本地测试：使用Base64（保留完整data URL格式）
+            const reader = new FileReader();
+            imageBase64 = await new Promise((resolve, reject) => {
+              reader.onload = () => {
+                // 保留完整的data URL格式，包含MIME类型信息
+                resolve(reader.result);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+          } else {
+            // 生产环境：上传为URL
+            imageUrl = await uploadImageFile(file);
+          }
+          
+          promoteProductImages.push({
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            url: imageUrl,
+            base64: imageBase64,
+            mimeType: file.type, // 保存MIME类型
+            previewUrl: URL.createObjectURL(file)
+          });
+          
+          showLoading(false);
+        } catch (error) {
+          showLoading(false);
+          alert(`物品图片 ${file.name} 处理失败：` + error.message);
         }
       }
+      
+      event.target.value = '';
+      renderPromoteProductImages();
     }
     
-    function removeProductImage(context) {
-      if (context === 'promote') {
-        promoteProductImageBase64 = null;
-        const preview = document.getElementById('promoteImagePreview');
-        if (preview) preview.style.display = 'none';
-        const input = document.getElementById('promoteImageInput');
-        if (input) input.value = '';
+    // 渲染人物图片列表（只能显示1张）
+    function renderPromotePersonImages() {
+      const container = document.getElementById('promotePersonImagesList');
+      const addBtn = document.getElementById('promoteAddPersonImageBtn');
+      if (!container) return;
+      
+      if (addBtn) {
+        addBtn.style.display = promotePersonImages.length >= 1 ? 'none' : 'block';
+        addBtn.textContent = promotePersonImages.length >= 1 ? '已上传人物图片' : '➕ 上传人物图片';
       }
+      
+      if (promotePersonImages.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-secondary);">请上传1张人物图片（必填）</div>';
+        return;
+      }
+      
+      container.innerHTML = promotePersonImages.map(img => `
+        <div style="position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-secondary);">
+          <img src="${img.previewUrl}" style="width: 100%; height: 120px; object-fit: cover;" alt="${img.name}">
+          <div style="padding: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${img.name}</div>
+            <button type="button" class="btn secondary" onclick="removePromotePersonImage('${img.id}')" style="width: 100%; padding: 4px 8px; font-size: 0.75rem;">🗑️ 删除</button>
+          </div>
+        </div>
+      `).join('');
     }
     
-    // 创建卖货推送视频（支持 HeyGen / 云雾）
-    // 创建卖货推送视频（使用统一接口，支持云雾API和HeyGen两种方式）
+    // 渲染物品图片列表
+    function renderPromoteProductImages() {
+      const container = document.getElementById('promoteProductImagesList');
+      const addBtn = document.getElementById('promoteAddProductImageBtn');
+      if (!container) return;
+      
+      if (addBtn) {
+        addBtn.style.display = promoteProductImages.length >= 3 ? 'none' : 'block';
+      }
+      
+      if (promoteProductImages.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-secondary);">暂无物品图片（可选）</div>';
+        return;
+      }
+      
+      container.innerHTML = promoteProductImages.map(img => `
+        <div style="position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-secondary);">
+          <img src="${img.previewUrl}" style="width: 100%; height: 120px; object-fit: cover;" alt="${img.name}">
+          <div style="padding: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${img.name}</div>
+            <button type="button" class="btn secondary" onclick="removePromoteProductImage('${img.id}')" style="width: 100%; padding: 4px 8px; font-size: 0.75rem;">🗑️ 删除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // 删除人物图片
+    function removePromotePersonImage(id) {
+      const img = promotePersonImages.find(i => i.id === id);
+      if (img && img.previewUrl) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
+      promotePersonImages = promotePersonImages.filter(i => i.id !== id);
+      renderPromotePersonImages();
+    }
+    
+    // 删除物品图片
+    function removePromoteProductImage(id) {
+      const img = promoteProductImages.find(i => i.id === id);
+      if (img && img.previewUrl) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
+      promoteProductImages = promoteProductImages.filter(i => i.id !== id);
+      renderPromoteProductImages();
+    }
+    
+    // 暴露函数到window
+    window.addPromotePersonImage = addPromotePersonImage;
+    window.addPromoteProductImage = addPromoteProductImage;
+    window.handlePromotePersonImageUpload = handlePromotePersonImageUpload;
+    window.handlePromoteProductImageUpload = handlePromoteProductImageUpload;
+    window.removePromotePersonImage = removePromotePersonImage;
+    window.removePromoteProductImage = removePromoteProductImage;
+    
+    // 轮询多图参考生视频任务
+    function pollPromoteMultiImage2VideoTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount) {
+      pollCount = pollCount || 0;
+      const maxPolls = 240; // 10分钟超时
+      
+      if (pollCount > maxPolls) {
+        reject(new Error('任务超时（10分钟仍未完成），已判定失败'));
+        return;
+      }
+      
+      const url = buildApiUrl(`/api/yunwu/videos/multi-image2video/${encodeURIComponent(taskId)}`);
+      
+      fetch(url, {
+        method: 'GET',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' }
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success === false && data.message) {
+            reject(new Error(data.message));
+            return;
+          }
+          
+          // 提取状态
+          const statusRaw = (data && data.data && data.data.task_status) ||
+            (data && data.task_status) ||
+            (data && data.data && data.data.status) ||
+            (data && data.status) ||
+            (data && data.data && data.data.task_result && data.data.task_result.task_status) ||
+            '';
+          
+          const status = normalizeTaskStatus(statusRaw);
+          const result = (data && data.data && data.data.task_result) ||
+            (data && data.data && data.data.result) ||
+            (data && data.result) ||
+            (data && data.data) ||
+            {};
+          
+          // 收集视频URL
+          let videos = [];
+          if (result.video || result.videoUrl || result.video_url) {
+            const v = result.video || result.videoUrl || result.video_url;
+            if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+            else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
+          }
+          if (result.videos && Array.isArray(result.videos)) {
+            result.videos.forEach(v => {
+              if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+              else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
+            });
+          }
+          if (!videos.length && result.url) {
+            const url = typeof result.url === 'string' ? result.url : (result.url && result.url.url);
+            if (url && /\.(mp4|webm|mov|avi)$/i.test(url)) videos.push(url);
+          }
+          if (!videos.length && data && data.data && data.data.video) {
+            const v = data.data.video;
+            if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+            else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
+          }
+          // 递归收集视频URL
+          if (!videos.length) {
+            collectReciteVideoUrls(data, videos);
+          }
+          videos = [...new Set(videos.filter(Boolean))];
+          
+          const videoId = (result && result.video_id) ||
+            (data && data.data && data.data.video_id) ||
+            (data && data.data && data.data.task_result && data.data.task_result.video_id) ||
+            (data && data.video_id) ||
+            '';
+          
+          if (status === 'done' && videos.length > 0) {
+            resolve({ videos: videos, raw: data, videoId: videoId });
+            return;
+          }
+          
+          if (status === 'failed') {
+            const errMsg = (result.message || result.error || data.message || data.error || '任务失败') + '';
+            reject(new Error(errMsg));
+            return;
+          }
+          
+          if (status === 'done' && !videos.length) {
+            const progressText = '状态已完成，等待视频生成，继续轮询…（' + (pollCount + 1) + '/' + maxPolls + '）';
+            if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              const pw = (window.MediaStudio.getWorks() || []).find(w => w.id === workId);
+              const n = ((pw && pw.progress) || 0) + 1;
+              window.MediaStudio.updateWork(workId, { progress: n, progressStatus: statusRaw || '等待资源' });
+            }
+            if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+            setTimeout(() => { pollPromoteMultiImage2VideoTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
+            return;
+          }
+          
+          const progressText = '轮询中，状态=' + (statusRaw || '处理中') + (videos.length > 0 ? '，已检测到视频链接' : '') + (pollCount > 0 ? '（' + (pollCount + 1) + '/' + maxPolls + '）' : '');
+          if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            const pw = (window.MediaStudio.getWorks() || []).find(w => w.id === workId);
+            const n = ((pw && pw.progress) || 0) + 1;
+            window.MediaStudio.updateWork(workId, { progress: n, progressStatus: statusRaw || '处理中' });
+          }
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+          setTimeout(() => { pollPromoteMultiImage2VideoTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
+        })
+        .catch(reject);
+    }
+    
+    // 创建卖货推送视频（仅云雾）
     async function createPromoteVideo() {
+      const provider = selectedPromotePlatform || 'yunwu';
+      
+      // ========== 云雾API处理（多图参考生视频） ==========
+      if (provider === 'yunwu') {
+        // 验证人物图片（必须1张）
+        if (promotePersonImages.length !== 1) {
+          alert('请上传1张人物图片（必填）');
+          return;
+        }
+        
+        // 验证提示词
+        const prompt = document.getElementById('promotePrompt')?.value.trim() || '';
+        if (!prompt) {
+          alert('请输入正向提示词');
+          return;
+        }
+        if (prompt.length > 2500) {
+          alert('提示词过长，不能超过2500个字符');
+          return;
+        }
+        
+        // 获取参数
+        const negativePrompt = document.getElementById('promoteNegativePrompt')?.value.trim() || '';
+        const mode = document.getElementById('promoteMode')?.value || 'std';
+        const duration = document.getElementById('promoteDuration')?.value || '5';
+        const aspectRatio = document.getElementById('promoteAspectRatio')?.value || '';
+        
+        const apiKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
+        if (!apiKey) {
+          alert('请先配置云雾 API Key');
+          return;
+        }
+        
+        const isLocal = isLocalhost();
+        
+        // 合并图片列表（人物图片 + 物品图片，最多4张）
+        const allImages = [...promotePersonImages, ...promoteProductImages].slice(0, 4);
+        const imageList = [];
+        
+        showLoading(true, '正在准备图片数据...');
+        
+        try {
+          for (const img of allImages) {
+            let imageValue = null;
+            
+            if (isLocal) {
+              // 本地测试：使用纯Base64（API不接受data URL格式）
+              if (img.base64) {
+                // 提取纯Base64字符串（移除data URL前缀和空白字符）
+                let pureBase64 = '';
+                if (img.base64.startsWith('data:')) {
+                  // 如果是data URL格式，提取base64部分
+                  const commaIndex = img.base64.indexOf(',');
+                  pureBase64 = commaIndex >= 0 ? img.base64.substring(commaIndex + 1) : img.base64;
+                } else {
+                  // 如果已经是纯Base64，直接使用
+                  pureBase64 = img.base64;
+                }
+                
+                // 移除所有空白字符
+                pureBase64 = pureBase64.replace(/[\s\n\r]/g, '');
+                
+                // 验证Base64格式
+                if (!/^[A-Za-z0-9+/=]+$/.test(pureBase64)) {
+                  console.error('无效的Base64格式:', img.name);
+                  showLoading(false);
+                  alert(`图片 ${img.name} 的Base64格式无效，请重新上传`);
+                  return;
+                }
+                
+                // API期望纯Base64字符串，不包含data URL前缀
+                imageValue = pureBase64;
+              }
+            } else {
+              // 生产环境：使用URL
+              if (img.url) {
+                imageValue = img.url;
+              } else if (img.base64) {
+                // 如果没有URL但有Base64，上传为URL
+                try {
+                  // 检测图片类型
+                  let mimeType = 'image/jpeg';
+                  if (img.name) {
+                    const ext = img.name.toLowerCase().split('.').pop();
+                    if (ext === 'png') mimeType = 'image/png';
+                    else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+                    else if (ext === 'webp') mimeType = 'image/webp';
+                  }
+                  
+                  const base64Data = img.base64.startsWith('data:') ? img.base64.split(',')[1] : img.base64.replace(/[\s\n\r]/g, '');
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  const blob = new Blob([bytes], { type: mimeType });
+                  const file = new File([blob], img.name || 'image.jpg', { type: mimeType });
+                  imageValue = await uploadImageFile(file);
+                } catch (err) {
+                  console.error('图片上传失败:', err);
+                  showLoading(false);
+                  alert(`图片 ${img.name} 上传失败：` + err.message);
+                  return;
+                }
+              }
+            }
+            
+            if (imageValue) {
+              imageList.push({ image: imageValue });
+            } else {
+              console.warn('图片处理失败，跳过:', img.name);
+            }
+          }
+          
+          if (imageList.length === 0) {
+            showLoading(false);
+            alert('图片处理失败，请重新上传');
+            return;
+          }
+          
+          // 构建请求体
+          const requestBody = {
+            model_name: 'kling-v1-6',
+            image_list: imageList,
+            prompt: prompt,
+            mode: mode,
+            duration: duration
+          };
+          
+          if (negativePrompt) {
+            requestBody.negative_prompt = negativePrompt;
+          }
+          if (aspectRatio) {
+            requestBody.aspect_ratio = aspectRatio;
+          }
+          
+          showLoading(true, '正在提交多图参考生视频任务...');
+          
+          // 调用API
+          const response = await fetch(buildApiUrl('/api/yunwu/videos/multi-image2video'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+            body: JSON.stringify(requestBody)
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok || (result.success === false)) {
+            showLoading(false);
+            alert('❌ 任务创建失败：' + (result.message || result.error || '未知错误'));
+            return;
+          }
+          
+          // 获取任务ID
+          const taskId = (result && result.data && (result.data.id || result.data.task_id || result.data.request_id)) ||
+            (result && result.id) ||
+            (result && result.task_id) ||
+            (result && result.request_id) ||
+            (result && result.data && result.data.request_id);
+          
+          if (!taskId) {
+            showLoading(false);
+            alert('❌ 任务创建失败：未返回任务ID');
+            return;
+          }
+          
+          // 保存作品记录
+          const workId = Date.now().toString();
+          const work = {
+            id: workId,
+            type: 'product',
+            title: prompt.substring(0, 50) || '多图参考生视频',
+            prompt: prompt,
+            negativePrompt: negativePrompt,
+            mode: mode,
+            duration: duration,
+            aspectRatio: aspectRatio,
+            platform: 'yunwu',
+            taskId: taskId,
+            status: 'processing',
+            progress: 0,
+            progressStatus: '已提交',
+            createdAt: new Date().toISOString()
+          };
+          
+          // 保存到localStorage
+          const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          works.unshift(work);
+          localStorage.setItem('cn_dh_works', JSON.stringify(works));
+          
+          // 立即关闭加载状态，开始后台轮询
+          showLoading(false);
+          
+          // 开始轮询
+          new Promise((resolve, reject) => {
+            pollPromoteMultiImage2VideoTask(taskId, apiKey, workId, (progressText, statusRaw) => {
+              // 更新作品状态
+              const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+              const w = works.find(w => w.id === workId);
+              if (w) {
+                w.progressStatus = statusRaw || progressText;
+                localStorage.setItem('cn_dh_works', JSON.stringify(works));
+                if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+                  loadWorks();
+                }
+              }
+            }, resolve, reject, 0);
+          })
+            .then(pollResult => {
+              // 任务完成，更新作品
+              const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+              const w = works.find(w => w.id === workId);
+              if (w && pollResult.videos && pollResult.videos.length > 0) {
+                w.videoUrl = pollResult.videos[0];
+                w.videoId = pollResult.videoId || '';
+                w.status = 'completed';
+                w.progressStatus = '已完成';
+                localStorage.setItem('cn_dh_works', JSON.stringify(works));
+                
+                // 刷新作品列表
+                if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+                  loadWorks();
+                }
+                
+                alert('✅ 视频生成成功！可在「作品管理」中查看。');
+              }
+            })
+            .catch(err => {
+              // 任务失败，更新作品
+              const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+              const w = works.find(w => w.id === workId);
+              if (w) {
+                w.status = 'failed';
+                w.progressStatus = err.message || '失败';
+                localStorage.setItem('cn_dh_works', JSON.stringify(works));
+                
+                // 刷新作品列表
+                if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+                  loadWorks();
+                }
+                
+                alert('❌ 视频生成失败：' + err.message);
+              }
+            });
+        } catch (error) {
+          showLoading(false);
+          alert('❌ 生成失败：' + error.message);
+        }
+        return;
+      }
+      
+      // ========== HeyGen处理（保持原有逻辑） ==========
       const productName = document.getElementById('promoteProductName')?.value.trim();
       const productDesc = document.getElementById('promoteProductDesc')?.value.trim();
       if (!productName) {
@@ -5739,106 +7820,35 @@ async function retryTask(digitalHumanId) {
         alert('商品描述过长，请控制在500字以内');
         return;
       }
-      if (!selectedPromoteDigitalHumanId && !selectedAvatarForPromote) {
-        alert('请先选择一个数字人形象');
-        return;
-      }
+      // ✅ 已删除：不再需要选择数字人
 
-      const provider = selectedPromotePlatform || 'heygen';
       const script = `大家好，今天为大家推荐一款${productName}。${productDesc}。感兴趣的朋友不要错过！`;
       let apiKey, requestBody;
 
-      // ========== 云雾API处理 ==========
-      if (provider === 'yunwu') {
-        if (!promoteAudioBase64Yunwu) {
-          alert('使用云雾数字人时，请上传推广音频或点击「使用该数字人原视频中的声音」（.mp3/.wav/.m4a/.aac，≤5MB）');
-          return;
-        }
-        apiKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
-        if (!apiKey) {
-          alert('请先配置云雾 API Key');
-          return;
-        }
-        
-        const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
-        const dh = digitalHumans.find(d => d.id === selectedPromoteDigitalHumanId);
-        if (!dh || !dh.thumbnail) {
-          alert('未找到该数字人的形象图');
-          return;
-        }
-
-        showLoading(true, '正在通过云雾生成推广视频...');
-        try {
-          // 处理图片：压缩并上传为URL（如果过大）
-          let imgToSend = dh.thumbnail;
-          const thumbLen = String(imgToSend || '').length;
-          if (thumbLen > 400000 && typeof compressImageForStorage === 'function') {
-            imgToSend = await compressImageForStorage(imgToSend, 640, 0.8);
-          }
-          
-          // 处理音频
-          let audioToSend = promoteAudioBase64Yunwu;
-          const urlThreshold = 200000;
-          
-          // 如果文件过大，上传为临时URL
-          if (String(imgToSend).length > urlThreshold) {
-            showLoading(true, '正在上传图片以减小请求体积...');
-            imgToSend = await ensureYunwuAssetUrl(imgToSend, 'image');
-            showLoading(true, '正在通过云雾生成推广视频...');
-          }
-          if (String(audioToSend).length > urlThreshold) {
-            showLoading(true, '正在上传音频以减小请求体积...');
-            audioToSend = await ensureYunwuAssetUrl(audioToSend, 'audio');
-            showLoading(true, '正在通过云雾生成推广视频...');
-          }
-
-          requestBody = {
-            provider: 'yunwu',
-            type: 'promote',
-            apiKey: apiKey,
-            imageUrl: imgToSend,
-            audioFile: audioToSend,
-            text: script,
-            prompt: script,
-            mode: 'std',
-            productName: productName,
-            productImage: promoteProductImageBase64 || null
-          };
-        } catch (err) {
-          showLoading(false);
-          alert('❌ 准备数据失败：' + err.message);
-          return;
-        }
+      apiKey = getHeyGenApiKey();
+      if (!apiKey) {
+        alert('请先配置 HeyGen API Key');
+        return;
       }
-      // ========== HeyGen处理 ==========
-      else {
-        apiKey = getHeyGenApiKey();
-        if (!apiKey) {
-          alert('请先配置 HeyGen API Key');
-          return;
-        }
 
-        if (!selectedAvatarForPromote) {
-          alert('请先选择一个数字人形象');
-          return;
-        }
+      // ✅ 已删除：不再需要选择数字人，HeyGen卖货推送功能已禁用，请使用云雾平台的多图参考生视频功能
+      alert('HeyGen平台的卖货推送功能已禁用。\n\n请切换到「云雾数字人」平台，使用多图参考生视频功能创建推广视频。');
+      return;
 
-        const voiceSelect = document.getElementById('promoteVoiceSelect');
-        const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
+      const voiceSelect = document.getElementById('promoteVoiceSelect');
+      const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
 
-        requestBody = {
-          provider: 'heygen',
-          type: 'promote',
-          apiKey: apiKey,
-          avatarId: selectedAvatarForPromote,
-          text: script,
-          voiceId: voiceId,
-          productName: productName,
-          productImage: promoteProductImageBase64 || null
-        };
+      requestBody = {
+        provider: 'heygen',
+        type: 'promote',
+        apiKey: apiKey,
+        avatarId: null, // 已删除选择数字人功能
+        text: script,
+        voiceId: voiceId,
+        productName: productName
+      };
 
-        showLoading(true, '正在通过HeyGen生成推广视频...');
-      }
+      showLoading(true, '正在通过HeyGen生成推广视频...');
 
       // ========== 统一调用接口 ==========
       try {
@@ -5887,7 +7897,7 @@ async function retryTask(digitalHumanId) {
           videoUrl: null,
           avatarId: provider === 'heygen' ? selectedAvatarForPromote : null,
           voiceId: provider === 'heygen' ? requestBody.voiceId : null,
-          imageUrl: promoteProductImageBase64 || null,
+          imageUrl: promoteProductImageUrl || null,
           createDate: new Date().toISOString(),
           updateDate: new Date().toISOString()
         };
@@ -5937,7 +7947,8 @@ async function retryTask(digitalHumanId) {
       }
       let pollCount = 0;
       const maxPolls = 300;
-      const taskUrl = () => buildApiUrl(`/api/digital-human/task/${platform}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+      const taskUrl = () => buildApiUrl(`/api/digital-human/task/${platform}/${taskId}`);
+      const authHeaders = (window.getAuthHeaders && window.getAuthHeaders()) || {};
       const pollInterval = setInterval(async () => {
         pollCount++;
         if (pollCount > maxPolls) {
@@ -5947,7 +7958,7 @@ async function retryTask(digitalHumanId) {
           return;
         }
         try {
-          const response = await fetch(taskUrl());
+          const response = await fetch(taskUrl(), { headers: authHeaders });
           const contentType = response.headers.get('content-type') || '';
           let result;
           
@@ -6064,7 +8075,9 @@ async function retryTask(digitalHumanId) {
       if (!apiKey) return;
       
       try {
-        const response = await fetch(`/api/heygen/task/${work.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        const response = await fetch(buildApiUrl(`/api/heygen/task/${work.taskId}`), {
+          headers: (window.getAuthHeaders && window.getAuthHeaders()) || {}
+        });
         const result = await response.json();
         
         if (result.success) {
@@ -6077,47 +8090,5 @@ async function retryTask(digitalHumanId) {
     }
     
     // ========== 面板加载函数 ==========
-    
-    
-    // 为不同上下文加载缓存的语音列表
-    function loadCachedVoicesForContext(context) {
-      try {
-        const cachedVoices = localStorage.getItem('heygen_voices');
-        if (cachedVoices) {
-          const voices = JSON.parse(cachedVoices);
-          let voiceSelectId;
-          if (context === 'recite') {
-            voiceSelectId = 'reciteVoiceSelect';
-          } else if (context === 'promote') {
-            voiceSelectId = 'promoteVoiceSelect';
-          } else {
-            return;
-          }
-          
-          const voiceSelect = document.getElementById(voiceSelectId);
-          if (voiceSelect && Array.isArray(voices) && voices.length > 0) {
-            voiceSelect.innerHTML = '<option value="">默认语音（自动选择）</option>';
-            
-            voices.forEach(voice => {
-              const option = document.createElement('option');
-              option.value = voice.voice_id;
-              let displayName = voice.name || voice.voice_id;
-              if (voice.language) {
-                displayName += ` (${voice.language})`;
-              }
-              if (voice.gender) {
-                displayName += ` - ${voice.gender === 'female' ? '女声' : voice.gender === 'male' ? '男声' : voice.gender}`;
-              }
-              option.textContent = displayName;
-              voiceSelect.appendChild(option);
-            });
-          }
-        }
-      } catch (error) {
-        console.warn('加载缓存的语音列表失败:', error);
-      }
-    }
-    
-    // 初始化
-    init();
+    // loadCachedVoicesForContext 在 modules/voices.js
   

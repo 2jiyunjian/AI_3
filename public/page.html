@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -43,13 +42,14 @@
     .sidebar {
       width: 256px;
       background: var(--sidebar-bg);
-      min-height: 100vh;
+      height: 100vh;
       position: fixed;
       left: 0;
       top: 0;
       display: flex;
       flex-direction: column;
       z-index: 100;
+      overflow: hidden;           /* 禁止整个侧边栏滚动 */
     }
 
     .sidebar-header {
@@ -58,6 +58,8 @@
       align-items: center;
       gap: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logo-icon {
@@ -92,6 +94,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;             /* 防止被压缩 */
     }
 
     .user-avatar {
@@ -129,7 +132,24 @@
     .nav-menu {
       flex: 1;
       padding: 8px 0;
-      overflow-y: auto;
+      overflow-y: auto;           /* 中间菜单区域可滚动 */
+      overflow-x: hidden;
+      scrollbar-width: thin;      /* Firefox 细滚动条 */
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      -ms-overflow-style: -ms-autohiding-scrollbar;   /* IE/Edge 自动隐藏滚动条 */
+    }
+    .nav-menu::-webkit-scrollbar {
+      width: 6px;                 /* Chrome/Safari/Opera 滚动条宽度 */
+    }
+    .nav-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .nav-menu::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    .nav-menu::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
     .menu-item { position: relative; }
@@ -200,6 +220,8 @@
     .sidebar-footer {
       padding: 16px 24px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logout-btn {
@@ -426,6 +448,171 @@
       font-size: 0.95rem;
       cursor: pointer;
       font-family: inherit;
+    }
+
+    /* 钱包/在线充值页 */
+    .wallet-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .wallet-user-info {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .wallet-balance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .wallet-balance-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .wallet-balance-label {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+    .wallet-balance-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .wallet-section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    .wallet-type-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .wallet-type-tab {
+      padding: 8px 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .wallet-type-tab.active {
+      border-color: var(--primary);
+      background: rgba(24, 144, 255, 0.06);
+      color: var(--primary);
+    }
+    .wallet-amount-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .wallet-amount-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .wallet-amount-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .wallet-amount-card:hover {
+      border-color: var(--primary-light);
+    }
+    .wallet-amount-card.selected {
+      border-color: var(--primary);
+      background: rgba(24, 144, 255, 0.06);
+    }
+    .wallet-amount-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .wallet-summary {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 320px;
+    }
+    .wallet-summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .wallet-summary-row:last-child { margin-bottom: 0; }
+    .wallet-summary-label { color: var(--text-secondary); }
+    .wallet-summary-value { font-weight: 500; color: var(--text-primary); }
+    .wallet-submit-btn {
+      margin-top: 16px;
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .wallet-submit-btn:hover { background: var(--primary-dark); }
+    .wallet-records {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+    .wallet-records-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    .wallet-records-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color, #e5e7eb);
+      background: var(--card-bg, #fff);
+    }
+    .wallet-records-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .wallet-records-table th,
+    .wallet-records-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+    .wallet-records-table th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-secondary, #f9fafb);
+    }
+    .wallet-records-table tr:last-child td { border-bottom: none; }
+    .wallet-records-table tr:hover td { background: var(--bg-hover, #f3f4f6); }
+    .wallet-records-type.recharge { color: var(--success, #059669); font-weight: 500; }
+    .wallet-records-type.deduct { color: var(--danger, #dc2626); font-weight: 500; }
+    .wallet-records-empty {
+      padding: 24px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
     }
 
     /* AI模型选择样式 */
@@ -1868,8 +2055,7 @@
       background: rgba(24, 144, 255, 0.1);
     }
 
-    /* ========== 数字人模块样式（已停用：以 public/digital-human/ 独立页面为主） ========== */
-    /*
+
     .dh-create-container {
       background: var(--card-bg);
       border-radius: 16px;
@@ -3386,240 +3572,6 @@
     }
 
     */
-    /* ========== 录制模态框样式 ========== */
-    .record-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-
-    .record-modal-overlay.show {
-      display: flex;
-      animation: fadeIn 0.2s ease;
-    }
-
-    .record-modal {
-      width: 100%;
-      max-width: 640px;
-      background: var(--card-bg);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .record-modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .record-modal-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .record-modal-body {
-      padding: 24px;
-    }
-
-    .record-mode-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .record-mode-tab {
-      flex: 1;
-      padding: 12px 16px;
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      background: var(--card-bg);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 0.9rem;
-      font-family: inherit;
-      color: var(--text-primary);
-    }
-
-    .record-mode-tab:hover {
-      border-color: var(--primary);
-    }
-
-    .record-mode-tab.active {
-      border-color: var(--primary);
-      background: rgba(24, 144, 255, 0.1);
-      color: var(--primary);
-    }
-
-    .record-preview-container {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .record-preview-container video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .record-preview-placeholder {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #666;
-      gap: 12px;
-    }
-
-    .record-preview-icon {
-      font-size: 4rem;
-    }
-
-    .record-timer {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(255, 0, 0, 0.8);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .record-dot {
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0%, 50% { opacity: 1; }
-      51%, 100% { opacity: 0.3; }
-    }
-
-    .audio-visualizer {
-      background: #1a1a2e;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .audio-visualizer canvas {
-      width: 100%;
-      height: 100px;
-    }
-
-    .record-controls {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .record-ctrl-btn {
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border: 1px solid var(--border-color);
-      background: var(--card-bg);
-      color: var(--text-primary);
-      font-family: inherit;
-    }
-
-    .record-ctrl-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .record-ctrl-btn.primary {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    .record-ctrl-btn.primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .record-ctrl-btn.danger {
-      background: var(--danger);
-      color: white;
-      border-color: var(--danger);
-    }
-
-    .record-ctrl-btn.danger:hover {
-      background: #ff1a1a;
-    }
-
-    .record-ctrl-btn.recording {
-      animation: pulse-red 1s infinite;
-    }
-
-    @keyframes pulse-red {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
-      50% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); }
-    }
-
-    .record-result {
-      background: rgba(82, 196, 26, 0.1);
-      border: 1px solid rgba(82, 196, 26, 0.3);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      margin-top: 20px;
-    }
-
-    .record-result-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--success);
-      margin-bottom: 8px;
-    }
-
-    .record-result-info {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
-
-    .record-result-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
   </style>
 </head>
 <body>
@@ -3628,16 +3580,7 @@
     <div class="sidebar-header">
       <div class="logo-icon">🤖</div>
       <div class="logo-text">
-        智能体管理平台
-        <span>用户前台</span>
-      </div>
-    </div>
-
-    <div class="user-info">
-      <div class="user-avatar" id="userAvatar">U</div>
-      <div class="user-details">
-        <div class="user-name" id="userName">用户</div>
-        <div class="role-badge">普通用户</div>
+        智能管理平台
       </div>
     </div>
 
@@ -3730,87 +3673,6 @@
     </div>
   </div>
 
-  <!-- 录制模态框 -->
-  <div class="record-modal-overlay" id="recordModalOverlay" onclick="closeRecordModal(event)">
-    <div class="record-modal" onclick="event.stopPropagation()">
-      <div class="record-modal-header">
-        <div class="record-modal-title">📹 录制素材</div>
-        <button class="settings-close-btn" onclick="closeRecordModal()">✕</button>
-      </div>
-      
-      <div class="record-modal-body">
-        <!-- 录制模式选择 -->
-        <div class="record-mode-tabs">
-          <button class="record-mode-tab active" data-mode="video" onclick="switchRecordMode('video')">
-            🎬 录制视频
-          </button>
-          <button class="record-mode-tab" data-mode="photo" onclick="switchRecordMode('photo')">
-            📷 拍摄照片
-          </button>
-          <button class="record-mode-tab" data-mode="audio" onclick="switchRecordMode('audio')">
-            🎤 录制音频
-          </button>
-        </div>
-        
-        <!-- 预览区域 -->
-        <div class="record-preview-container">
-          <video id="recordPreview" autoplay muted playsinline></video>
-          <canvas id="recordCanvas" style="display: none;"></canvas>
-          <div class="record-preview-placeholder" id="previewPlaceholder">
-            <div class="record-preview-icon">📹</div>
-            <div>点击下方按钮开启摄像头</div>
-          </div>
-          
-          <!-- 录制时间显示 -->
-          <div class="record-timer" id="recordTimer" style="display: none;">
-            <span class="record-dot"></span>
-            <span id="recordTime">00:00</span>
-          </div>
-          
-          <!-- 拍摄的照片预览 -->
-          <img id="capturedPhoto" style="display: none; max-width: 100%; border-radius: 8px;">
-        </div>
-        
-        <!-- 音频波形显示（仅音频模式） -->
-        <div class="audio-visualizer" id="audioVisualizer" style="display: none;">
-          <canvas id="audioCanvas" width="400" height="100"></canvas>
-        </div>
-        
-        <!-- 录制控制按钮 -->
-        <div class="record-controls">
-          <button class="record-ctrl-btn" id="btnStartCamera" onclick="startCamera()">
-            📷 开启摄像头
-          </button>
-          <button class="record-ctrl-btn" id="btnStartMic" onclick="startMicrophone()" style="display: none;">
-            🎤 开启麦克风
-          </button>
-          <button class="record-ctrl-btn danger" id="btnStopCamera" onclick="stopCamera()" style="display: none;">
-            ⏹️ 关闭设备
-          </button>
-          <button class="record-ctrl-btn primary" id="btnStartRecord" onclick="startRecording()" style="display: none;">
-            ⏺️ 开始录制
-          </button>
-          <button class="record-ctrl-btn danger recording" id="btnStopRecord" onclick="stopRecording()" style="display: none;">
-            ⏹️ 停止录制
-          </button>
-          <button class="record-ctrl-btn primary" id="btnCapturePhoto" onclick="capturePhoto()" style="display: none;">
-            📷 拍摄照片
-          </button>
-        </div>
-        
-        <!-- 录制结果 -->
-        <div class="record-result" id="recordResult" style="display: none;">
-          <div class="record-result-title">✅ 录制完成</div>
-          <div class="record-result-info" id="recordResultInfo"></div>
-          <div class="record-result-actions">
-            <button class="record-ctrl-btn" onclick="retakeRecording()">🔄 重新录制</button>
-            <button class="record-ctrl-btn primary" onclick="useRecording()">✓ 使用此素材</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 消息通知弹窗 -->
   <div class="notification-modal-overlay" id="notificationModalOverlay" onclick="closeNotificationModal(event)">
     <div class="notification-modal" onclick="event.stopPropagation()">
@@ -3862,10 +3724,11 @@
               <!-- 模型选项将动态生成 -->
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="agentApiKeyFormGroup">
             <label class="form-label">API Key *</label>
             <input type="password" class="form-input" id="agentApiKey" placeholder="请输入所选平台的API密钥">
             <div class="form-hint" id="apiKeyHint">🔑 请输入对应平台的API Key，<a href="#" id="apiKeyLink" target="_blank" style="color: var(--primary);">点击获取</a></div>
+            <div class="form-hint" id="agentApiKeyAdminHint" style="display: none;">API Key 由管理员在后台分配，无需填写。请先登录后使用。</div>
           </div>
           <div class="form-group">
             <label class="form-label">智能体描述</label>
@@ -4380,6 +4243,7 @@
       'custom-category': { title: '自定义类目', icon: '🏷️', iconColor: 'green', parent: '我的作品表', desc: '创建自定义分类目录' },
       'my-works': { title: '我的作品', icon: '🎨', iconColor: 'purple', parent: '我的作品表', desc: '管理所有创作的作品' },
       'vip-purchase': { title: '会员购买', icon: '👑', iconColor: 'orange', parent: '个人中心', desc: '升级会员享受更多权益' },
+      'wallet': { title: '在线充值', icon: '💰', iconColor: 'orange', parent: '钱包', desc: '快速方便的充值方式', type: 'wallet' },
       'token-recharge': { title: '算力豆充值', icon: '🪙', iconColor: 'orange', parent: '个人中心', desc: '充值算力豆获取更多使用次数' },
       'my-orders': { title: '我的订单', icon: '📋', iconColor: 'blue', parent: '个人中心', desc: '查看所有订单记录' },
       'my-income': { title: '我的收入', icon: '💰', iconColor: 'green', parent: '个人中心', desc: '查看收益和提现' },
@@ -4418,6 +4282,9 @@
           { text: '🇨🇳 国内数字人', page: 'digital-human-cn', tag: { text: '国产', color: 'red' }, isExternal: true, url: 'digital-human/cn.html' },
           { text: '🌍 国际数字人', page: 'digital-human-intl', tag: { text: 'Global', color: 'purple' }, isExternal: true, url: 'digital-human/intl.html' }
         ]
+      },
+      {
+        icon: '💰', text: '钱包', directLink: 'page.html?page=wallet'
       },
       {
         icon: '⚡', text: '工作流市场',
@@ -4562,6 +4429,11 @@
         return;
       }
       
+      if (config.type === 'wallet') {
+        renderWalletPage(config);
+        return;
+      }
+      
       // 渲染普通功能页面
       let featuresHtml = '';
       if (config.features && config.features.length > 0) {
@@ -4600,6 +4472,140 @@
         </div>
         ${featuresHtml}
       `;
+    }
+
+    // 钱包/在线充值页（无折扣）- 余额从 /api/wallet 获取
+    const WALLET_AMOUNTS = [100, 500, 1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000, 300000, 500000, 800000, 1000000];
+    async function renderWalletPage(config) {
+      document.getElementById('breadcrumb').innerHTML = `
+        <span>🏠</span><span>/</span><span>钱包</span><span>/</span><span class="breadcrumb-item">在线充值</span>
+      `;
+      document.title = '在线充值 - 智能体管理平台';
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+      const email = user.email || user.username ? user.username + '@user' : '';
+      let balance = 0;
+      let consumed = 0;
+      const token = sessionStorage.getItem('token') || '';
+      let records = [];
+      if (token) {
+        try {
+          const [walletRes, recordsRes] = await Promise.all([
+            fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/wallet/records?limit=50', { headers: { 'Authorization': 'Bearer ' + token } })
+          ]);
+          const data = walletRes.ok ? await walletRes.json() : {};
+          if (data.success && data.balance != null) balance = Number(data.balance) || 0;
+          if (data.success && data.consumed != null) consumed = Number(data.consumed) || 0;
+          const recData = recordsRes.ok ? await recordsRes.json() : {};
+          if (recData.success && Array.isArray(recData.records)) records = recData.records;
+        } catch (e) {
+          console.warn('获取钱包或记录失败:', e);
+        }
+      }
+      const formatRecordTime = (s) => {
+        if (!s) return '-';
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? s : d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+      const recordsRowsHtml = records.length === 0
+        ? '<tr><td colspan="5" class="wallet-records-empty">暂无充值与扣款记录</td></tr>'
+        : records.map(rec => `
+          <tr>
+            <td>${formatRecordTime(rec.created_at)}</td>
+            <td><span class="wallet-records-type ${rec.type}">${rec.type === 'recharge' ? '充值' : '扣款'}</span></td>
+            <td>${rec.type === 'recharge' ? '+' : '-'}⚡ ${Math.abs(rec.amount).toFixed(2)}</td>
+            <td>${rec.balance_after != null ? '⚡ ' + rec.balance_after.toFixed(2) : '-'}</td>
+            <td>${(rec.description || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+          </tr>
+        `).join('');
+      const amountCardsHtml = WALLET_AMOUNTS.map((amt, i) => `
+        <div class="wallet-amount-card" data-amount="${amt}" onclick="selectWalletAmount(${amt})" title="⚡ ${amt.toLocaleString()}">
+          <div class="wallet-amount-value">⚡ ${amt.toLocaleString()}</div>
+        </div>
+      `).join('');
+      document.getElementById('contentArea').innerHTML = `
+        <div class="page-header">
+          <div class="wallet-header-row">
+            <div>
+              <div class="page-title">
+                <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
+                在线充值
+              </div>
+              <div class="page-desc">快速方便的充值方式</div>
+            </div>
+            <div class="wallet-user-info">${email ? email + ' (普通用户)' : ''}</div>
+          </div>
+        </div>
+        <div class="wallet-balance-grid">
+          <div class="wallet-balance-card">
+            <div class="wallet-balance-label">当前余额 (Current Balance)</div>
+            <div class="wallet-balance-value">⚡ ${balance.toFixed(2)}</div>
+          </div>
+          <div class="wallet-balance-card">
+            <div class="wallet-balance-label">历史消耗 (Historical Consumption)</div>
+            <div class="wallet-balance-value">⚡ ${consumed.toFixed(2)}</div>
+          </div>
+        </div>
+        <div class="wallet-section-title">充值类型 (Recharge Type)</div>
+        <div class="wallet-type-tabs">
+          <button type="button" class="wallet-type-tab active" data-type="fixed">固定金额 (Fixed Amount)</button>
+          <button type="button" class="wallet-type-tab" data-type="custom">自定义金额 (Custom Amount)</button>
+        </div>
+        <div class="wallet-section-title">选择充值金额 (Select Recharge Amount)</div>
+        <div class="wallet-amount-grid" id="walletAmountGrid">${amountCardsHtml}</div>
+        <div class="wallet-summary" id="walletSummary">
+          <div class="wallet-summary-row">
+            <span class="wallet-summary-label">充值数量 (Recharge Quantity)</span>
+            <span class="wallet-summary-value" id="walletSummaryQty">⚡ 100.00</span>
+          </div>
+          <div class="wallet-summary-row">
+            <span class="wallet-summary-label">实付金额 (Actual Payment)</span>
+            <span class="wallet-summary-value" id="walletSummaryPay">100.00 元</span>
+          </div>
+          <a href="/recharge.html">
+            <button type="button" class="wallet-submit-btn">确认充值</button>
+          </a>
+          
+        </div>
+        <div class="wallet-records">
+          <div class="wallet-records-title">充值与扣款记录</div>
+          <div class="wallet-records-table-wrap">
+            <table class="wallet-records-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>类型</th>
+                  <th>金额</th>
+                  <th>变动后余额</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>${recordsRowsHtml}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      selectWalletAmount(100);
+      document.querySelectorAll('.wallet-type-tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.wallet-type-tab').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+    }
+    function selectWalletAmount(amount) {
+      document.querySelectorAll('.wallet-amount-card').forEach(el => {
+        el.classList.toggle('selected', parseInt(el.dataset.amount, 10) === amount);
+      });
+      const qtyEl = document.getElementById('walletSummaryQty');
+      const payEl = document.getElementById('walletSummaryPay');
+      if (qtyEl) qtyEl.textContent = '⚡ ' + amount.toFixed(2);
+      if (payEl) payEl.textContent = amount.toFixed(2) + ' 元';
+      window._walletSelectedAmount = amount;
+    }
+    function submitWalletRecharge() {
+      const amount = window._walletSelectedAmount || 100;
+      alert('充值功能需对接支付接口。当前选择：⚡ ' + amount.toLocaleString());
     }
 
     // 渲染AI模型选择页面
@@ -5124,8 +5130,9 @@
       // 填充表单
       document.getElementById('agentName').value = agent.name || '';
       document.getElementById('agentDesc').value = agent.desc || '';
-      document.getElementById('agentApiKey').value = ''; // 不显示已保存的API Key，用户可以输入新的
-      document.getElementById('agentApiKey').placeholder = agent.apiKey ? '已配置 (留空保持不变)' : '请输入API密钥';
+      const isDh = platformId === 'heygen' || platformId === 'yunwu';
+      document.getElementById('agentApiKey').value = '';
+      document.getElementById('agentApiKey').placeholder = isDh ? '' : (agent.apiKey ? '已配置 (留空保持不变)' : '请输入API密钥');
       document.getElementById('agentSystemPrompt').value = agent.systemPrompt || '';
       document.getElementById('agentGreeting').value = agent.greeting || '';
       document.getElementById('agentTemperature').value = agent.temperature || 0.7;
@@ -5133,8 +5140,7 @@
       document.getElementById('agentMaxTokens').value = agent.maxTokens || '2048';
       document.getElementById('agentFeatures').value = (agent.features || []).join(', ');
       
-      // 更新API Key链接
-      selectCreateModel(platformId);
+      selectCreateModel(platformId); // 会根据平台显示/隐藏 API Key 输入（数字人由管理员分配）
     }
 
     // 删除创建的智能体
@@ -5224,7 +5230,24 @@
         item.classList.toggle('selected', item.dataset.model === modelId);
       });
       
-      // 更新API Key获取链接
+      // 数字人平台（heygen/yunwu）由管理员分配 API Key，不展示输入框
+      const isDigitalHuman = modelId === 'heygen' || modelId === 'yunwu';
+      const apiKeyGroup = document.getElementById('agentApiKeyFormGroup');
+      const apiKeyInput = document.getElementById('agentApiKey');
+      const apiKeyHint = document.getElementById('apiKeyHint');
+      const adminHint = document.getElementById('agentApiKeyAdminHint');
+      if (apiKeyGroup && apiKeyHint && adminHint) {
+        if (isDigitalHuman) {
+          apiKeyHint.style.display = 'none';
+          adminHint.style.display = 'block';
+          if (apiKeyInput) apiKeyInput.style.display = 'none';
+        } else {
+          apiKeyHint.style.display = 'block';
+          adminHint.style.display = 'none';
+          if (apiKeyInput) apiKeyInput.style.display = '';
+        }
+      }
+      
       const apiKeyLinks = {
         'openai': 'https://platform.openai.com/api-keys',
         'claude': 'https://console.anthropic.com/',
@@ -5238,10 +5261,9 @@
       };
       
       const linkEl = document.getElementById('apiKeyLink');
-      const hintEl = document.getElementById('apiKeyHint');
       const model = modelOptions.find(m => m.id === modelId);
       
-      if (linkEl && apiKeyLinks[modelId]) {
+      if (linkEl && apiKeyLinks[modelId] && !isDigitalHuman) {
         linkEl.href = apiKeyLinks[modelId];
         linkEl.textContent = `前往${model?.name || '平台'}获取`;
       }
@@ -5274,7 +5296,8 @@
         return;
       }
       
-      if (!apiKey && !editingAgentId) {
+      const isDigitalHuman = selectedModelId === 'heygen' || selectedModelId === 'yunwu';
+      if (!isDigitalHuman && !apiKey && !editingAgentId) {
         alert('请输入API Key！\n\n没有API Key将无法与智能体对话。');
         return;
       }
@@ -5298,19 +5321,20 @@
         type: 'created'
       };
       
-      // 只有当输入了新的API Key时才更新
-      if (apiKey) {
+      // 非数字人平台才保存用户输入的 API Key；数字人（heygen/yunwu）由服务器按登录用户分配，不存前端
+      if (!isDigitalHuman && apiKey) {
         agentData.apiKey = apiKey;
+      }
+      if (isDigitalHuman) {
+        delete agentData.apiKey;
       }
       
       let createdAgents = getCreatedAgents();
       
       if (editingAgentId) {
-        // 编辑模式
         const index = createdAgents.findIndex(a => a.id === editingAgentId);
         if (index !== -1) {
-          // 保留原有的API Key如果没有输入新的
-          if (!apiKey && createdAgents[index].apiKey) {
+          if (!isDigitalHuman && !apiKey && createdAgents[index].apiKey) {
             agentData.apiKey = createdAgents[index].apiKey;
           }
           createdAgents[index] = { ...createdAgents[index], ...agentData };
@@ -5424,6 +5448,7 @@
     // 退出登录
     function logout() {
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
       window.location.href = '/';
     }
 
@@ -5435,8 +5460,10 @@
         return;
       }
 
-      document.getElementById('userName').textContent = user.username;
-      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+      const userNameEl = document.getElementById('userName');
+      const userAvatarEl = document.getElementById('userAvatar');
+      if (userNameEl) userNameEl.textContent = user.username;
+      if (userAvatarEl) userAvatarEl.textContent = user.username.charAt(0).toUpperCase();
 
       renderMenu();
       renderContent();

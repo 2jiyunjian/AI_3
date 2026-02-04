@@ -43,13 +43,14 @@
     .sidebar {
       width: 256px;
       background: var(--sidebar-bg);
-      min-height: 100vh;
+      height: 100vh;
       position: fixed;
       left: 0;
       top: 0;
       display: flex;
       flex-direction: column;
       z-index: 100;
+      overflow: hidden;           /* 禁止整个侧边栏滚动 */
     }
 
     .sidebar-header {
@@ -58,6 +59,8 @@
       align-items: center;
       gap: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logo-icon {
@@ -92,6 +95,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;             /* 防止被压缩 */
     }
 
     .user-avatar {
@@ -131,7 +135,24 @@
     .nav-menu {
       flex: 1;
       padding: 8px 0;
-      overflow-y: auto;
+      overflow-y: auto;           /* 中间菜单区域可滚动 */
+      overflow-x: hidden;
+      scrollbar-width: thin;      /* Firefox 细滚动条 */
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      -ms-overflow-style: -ms-autohiding-scrollbar;   /* IE/Edge 自动隐藏滚动条 */
+    }
+    .nav-menu::-webkit-scrollbar {
+      width: 6px;                 /* Chrome/Safari/Opera 滚动条宽度 */
+    }
+    .nav-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .nav-menu::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    .nav-menu::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
     .menu-item {
@@ -256,6 +277,8 @@
     .sidebar-footer {
       padding: 16px 24px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logout-btn {
@@ -512,16 +535,7 @@
     <div class="sidebar-header">
       <div class="logo-icon">🤖</div>
       <div class="logo-text">
-        智能体管理平台
-        <span>用户前台</span>
-      </div>
-    </div>
-
-    <div class="user-info">
-      <div class="user-avatar" id="userAvatar">U</div>
-      <div class="user-details">
-        <div class="user-name" id="userName">用户</div>
-        <div class="role-badge">普通用户</div>
+        智能管理平台
       </div>
     </div>
 
@@ -602,6 +616,14 @@
             <span class="menu-tag purple">Global</span>
           </a>
         </div>
+      </div>
+
+      <!-- 钱包 -->
+      <div class="menu-item">
+        <a class="menu-link parent" href="page.html?page=wallet" style="text-decoration: none;">
+          <span class="menu-icon">💰</span>
+          <span class="menu-text">钱包</span>
+        </a>
       </div>
 
       <!-- 工作流市场 -->
@@ -805,9 +827,12 @@
     if (!user || user.role !== 'user') {
       window.location.href = '/';
     } else {
-      document.getElementById('userName').textContent = user.username;
-      document.getElementById('welcomeName').textContent = user.username;
-      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+      const userNameEl = document.getElementById('userName');
+      const welcomeNameEl = document.getElementById('welcomeName');
+      const userAvatarEl = document.getElementById('userAvatar');
+      if (userNameEl) userNameEl.textContent = user.username;
+      if (welcomeNameEl) welcomeNameEl.textContent = user.username;
+      if (userAvatarEl) userAvatarEl.textContent = user.username.charAt(0).toUpperCase();
     }
 
     // 切换子菜单
@@ -819,6 +844,7 @@
     // 退出登录
     function logout() {
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
       window.location.href = '/';
     }
   </script>

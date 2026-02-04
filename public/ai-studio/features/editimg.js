@@ -267,9 +267,10 @@
       return;
     }
     var url = apiOrigin() + '/api/yunwu/images/multi-image2image/' + encodeURIComponent(taskId);
+    var authHeaders = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
     fetch(url, {
       method: 'GET',
-      headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -329,6 +330,22 @@
         audios = [...new Set(audios.filter(Boolean))];
 
         if (status === 'done' && (images.length > 0 || videos.length > 0 || audios.length > 0)) {
+          // 任务完成且有资源，立即更新作品状态
+          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+            var updates = {
+              status: 'ready',
+              images: images,
+              videos: videos,
+              audios: audios,
+              progress: 100,
+              progressStatus: '已完成'
+            };
+            if (videos.length) updates.resultUrl = videos[0];
+            else if (audios.length) updates.resultUrl = audios[0];
+            else if (images.length) updates.resultUrl = images[0];
+            window.MediaStudio.updateWork(workId, updates);
+            if (window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
+          }
           resolve({ images: images, videos: videos, audios: audios, raw: data });
           return;
         }
@@ -517,7 +534,7 @@
     btn.addEventListener('click', function () {
       var apiKey = window.MediaStudio && window.MediaStudio.getYunwuApiKey && window.MediaStudio.getYunwuApiKey();
       if (!apiKey || !String(apiKey).trim()) {
-        setResult('<span class="msg-warning">请先在设置中配置 API Key</span>', true);
+        setResult('<span class="msg-warning">请先登录，由管理员在后台分配云雾 API Key 后即可使用</span>', true);
         return;
       }
 
@@ -571,7 +588,6 @@
         var aspect_ratio = getVal('multi-img-aspect', '16:9');
 
         var body = {
-          apiKey: apiKey,
           model_name: model,
           subject_image_list: subjectImageList,
           n: n,
@@ -604,14 +620,40 @@
       }
 
       function sendRequest(body) {
-        body.apiKey = apiKey;
         setResult('正在提交任务…', true);
         btn.disabled = true;
+        
+        var refImgs = (body.subject_image_list || []).map(function (s) { return s && s.subject_image; }).filter(Boolean);
+        if (body.scene_image) refImgs.push(body.scene_image);
+        if (body.style_image) refImgs.push(body.style_image);
+        // 立即创建作品记录，显示"处理中"状态
         var workId = null;
+        if (window.MediaStudio && window.MediaStudio.addWork) {
+          workId = window.MediaStudio.addWork({
+            type: 'editimg',
+            status: 'processing',
+            taskId: null, // 临时为null，等待API返回
+            prompt: body.prompt || '',
+            title: (body.prompt || '多图参考生图').toString().slice(0, 80),
+            images: [],
+            videos: [],
+            audios: [],
+            referenceImages: refImgs,
+            model_name: body.model_name,
+            progress: 0,
+            progressStatus: '正在提交请求...'
+          });
+          
+          // 刷新作品列表显示
+          if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+            window.MediaStudio.refreshWorksList();
+          }
+        }
 
+        var authHeadersEdit = (window.MediaStudio && window.MediaStudio.getAuthHeaders && window.MediaStudio.getAuthHeaders()) || {};
         fetch(apiOrigin() + '/api/yunwu/images/multi-image2image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeadersEdit),
           body: JSON.stringify(body),
         })
           .then(function (r) { return r.json(); })
@@ -622,20 +664,30 @@
               var errMsg = (data && (data.message || data.error || (data.error && data.error.message))) ? (data.message || data.error || (data.error && data.error.message)) : '未返回任务 ID';
               setResult('<span class="msg-error">✗ ' + String(errMsg).replace(/\n/g, '<br>') + '</span>' + (data && data.data ? '<pre>' + JSON.stringify(data, null, 2) + '</pre>' : ''), true);
               btn.disabled = false;
+              
+              // 更新作品状态为失败
+              if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+                window.MediaStudio.updateWork(workId, {
+                  status: 'failed',
+                  progressStatus: errMsg
+                });
+                if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                  window.MediaStudio.refreshWorksList();
+                }
+              }
+              
               return Promise.reject(new Error(errMsg));
             }
-            if (window.MediaStudio && window.MediaStudio.addWork) {
-              workId = window.MediaStudio.addWork({
-                type: 'editimg',
-                status: 'processing',
+            
+            // 更新作品记录的taskId
+            if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+              window.MediaStudio.updateWork(workId, {
                 taskId: taskId,
-                prompt: body.prompt || '',
-                title: (body.prompt || '多图参考生图').toString().slice(0, 80),
-                images: [],
-                videos: [],
-                audios: [],
-                model_name: body.model_name,
+                progressStatus: '任务已提交，等待处理...'
               });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) {
+                window.MediaStudio.refreshWorksList();
+              }
             }
             setResult('任务已创建，轮询中: ' + taskId + ' …', true);
             return new Promise(function (resolve, reject) {
@@ -684,6 +736,7 @@
             setResult('<span class="msg-error">✗ ' + (err.message || String(err)).replace(/\n/g, '<br>') + '</span>', true);
             if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
               window.MediaStudio.updateWork(workId, { status: 'failed', error: (err && err.message) || String(err), progress: null, progressStatus: null });
+              if (window.MediaStudio && window.MediaStudio.refreshWorksList) window.MediaStudio.refreshWorksList();
             }
             btn.disabled = false;
           });
